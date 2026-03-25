@@ -104,10 +104,14 @@ def preprocess(data: dict, n_comp: int) -> dict:
     pca.fit(data["power_train"])
 
     # keep the same convention as in your notebook: W columns are PCA directions
-    W = pca.components_.T
-    projected_coeffs_train = np.real(np.dot(data["power_train"], W))
-    projected_coeffs_val = np.real(np.dot(data["power_val"], W))
-    projected_coeffs_test = np.real(np.dot(data["power_test"], W))
+    # W = pca.components_.T
+    # projected_coeffs_train = np.real(np.dot(data["power_train"], W))
+    # projected_coeffs_val = np.real(np.dot(data["power_val"], W))
+    # projected_coeffs_test = np.real(np.dot(data["power_test"], W))
+
+    projected_coeffs_train = pca.transform(data["power_train"])
+    projected_coeffs_val = pca.transform(data["power_val"])
+    projected_coeffs_test = pca.transform(data["power_test"])   
 
     weight_scaler = StandardScaler().fit(projected_coeffs_train)
     y_train_np = weight_scaler.transform(projected_coeffs_train)
@@ -273,11 +277,16 @@ def evaluate_model(
     )
 
     pred_weights_test = processed["weight_scaler"].inverse_transform(pred_y_test)
-    test_pred_spectra = np.dot(pred_weights_test, processed["W"].T)
-
+    # test_pred_spectra = np.dot(pred_weights_test, processed["W"].T)
+    test_pred_spectra = processed["pca"].inverse_transform(pred_weights_test)
+    # mean_test_error = 100.0 * np.mean(
+    #     np.abs(raw_data["power_test"] - test_pred_spectra) / np.abs(raw_data["power_test"]),
+    #     axis=1,
+    # )
+    denom = np.maximum(np.abs(raw_data["power_test"]), 1e-8)
     mean_test_error = 100.0 * np.mean(
-        np.abs(raw_data["power_test"] - test_pred_spectra) / np.abs(raw_data["power_test"]),
-        axis=1,
+    np.abs(raw_data["power_test"] - test_pred_spectra) / denom,
+    axis=1,
     )
 
     return {
@@ -316,6 +325,9 @@ def main() -> None:
     if args.device == "cuda" and not torch.cuda.is_available():
         raise RuntimeError("You passed --device cuda but CUDA is not available.")
 
+    device = "cuda" if args.device == "cuda" else "cpu"
+    print(f"Using device: {device}", flush=True)
+
     raw_data = load_splits(args.data_dir)
     processed = preprocess(raw_data, n_comp=args.n_comp)
 
@@ -346,7 +358,7 @@ def main() -> None:
             verbose=False,
             trial=trial,
             patience=args.patience,
-            device=args.device,
+            device=device,
         )
 
         trial.set_user_attr("best_epoch", int(best_epoch))
@@ -404,14 +416,14 @@ def main() -> None:
         verbose=True,
         trial=None,
         patience=max(args.patience, 1000),
-        device=args.device,
+        device=device,
     )
 
-    metrics = evaluate_model(best_model.to(args.device), processed, raw_data, device=args.device)
+    metrics = evaluate_model(best_model.to(device), processed, raw_data, device=device)
     print(f"Test loss (normalised PCA-weight space): {metrics['test_loss_normalised_space']:.6f}", flush=True)
     print(f"Mean percentage error: {metrics['mean_percentage_error']:.3f}%", flush=True)
     print(f"95th percentile error: {metrics['p95_percentage_error']:.3f}%", flush=True)
-
+    best_model = best_model.to("cpu")
     torch.save(
         {
             "model_state_dict": best_model.state_dict(),
