@@ -20,9 +20,21 @@ echo "Job ID: $SLURM_JOB_ID"
 echo "Host: $(hostname)"
 which python
 python --version
-nvidia-smi
+nvidia-smi -l 60 &
+GPU_MONITOR_PID=$!
 
 python -u optuna_optimize.py \
-  --device cuda \
-  --data-dir "$PROJECT/simulations" \
-  --output-dir "$PROJECT/optuna_outputs"
+--device cuda \
+--data-dir "$PROJECT/simulations" \
+--output-dir "$PROJECT/optuna_outputs" \
+--study-name emulator_optuna \
+--storage "sqlite:///$PROJECT/optuna_outputs/emulator_optuna.db" \
+--n-trials 750 \
+--n-comp 7 \
+--epochs 1500 \
+--batch-size 512 \
+--patience 500 \
+--seed 1701
+
+
+kill $GPU_MONITOR_PID
