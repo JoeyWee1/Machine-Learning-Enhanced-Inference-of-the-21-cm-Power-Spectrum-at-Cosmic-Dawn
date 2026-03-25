@@ -104,7 +104,7 @@ def preprocess(data: dict, n_comp: int) -> dict:
     pca.fit(data["power_train"])
 
     # keep the same convention as in your notebook: W columns are PCA directions
-    # W = pca.components_.T
+    W = pca.components_.T
     # projected_coeffs_train = np.real(np.dot(data["power_train"], W))
     # projected_coeffs_val = np.real(np.dot(data["power_val"], W))
     # projected_coeffs_test = np.real(np.dot(data["power_test"], W))
@@ -182,10 +182,10 @@ def train_model(
     set_seed(1701)
 
     model = model.to(device)
-    x_train = x_train.to(device)
-    y_train = y_train.to(device)
-    x_val = x_val.to(device)
-    y_val = y_val.to(device)
+    # x_train = x_train.to(device)
+    # y_train = y_train.to(device)
+    # x_val = x_val.to(device)
+    # y_val = y_val.to(device)
 
     best_valid_loss = float("inf")
     best_train_loss = None
@@ -331,6 +331,10 @@ def main() -> None:
     raw_data = load_splits(args.data_dir)
     processed = preprocess(raw_data, n_comp=args.n_comp)
 
+    # Move data to GPU once, so it's not re-uploaded every trial
+    for key in ["x_train", "y_train", "x_val", "y_val", "x_test", "y_test"]:
+        processed[key] = processed[key].to(device)
+
     def objective(trial: optuna.Trial) -> float:
         set_seed(args.seed)
 
@@ -343,7 +347,13 @@ def main() -> None:
             output_dim=args.n_comp,
             hidden_dim=hidden_dim,
             num_layers=num_layers,
-        )
+        ).to(device)
+
+        print("torch.cuda.is_available():", torch.cuda.is_available())
+        if torch.cuda.is_available():
+            print("torch.cuda.get_device_name(0):", torch.cuda.get_device_name(0))
+            print("model device:", next(model.parameters()).device)
+
         optimiser = optim.Adam(model.parameters(), lr=lr)
 
         best_valid_loss, best_train_loss, best_epoch, _ = train_model(
