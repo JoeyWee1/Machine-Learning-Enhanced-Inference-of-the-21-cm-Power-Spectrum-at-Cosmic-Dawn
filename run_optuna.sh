@@ -23,18 +23,19 @@ python --version
 nvidia-smi -l 60 &
 GPU_MONITOR_PID=$!
 
-python -u optuna_optimize.py \
+
+python -u optuna_optimizev2.py \
 --device cuda \
 --data-dir "$PROJECT/simulations" \
 --output-dir "$PROJECT/optuna_outputs" \
---study-name emulator_optuna \
---storage "sqlite:///$PROJECT/optuna_outputs/emulator_optuna.db" \
---n-trials 750 \
---n-comp 7 \
+--study-name emulator_optuna-recon \
+--storage "sqlite:///$PROJECT/optuna_outputs/emulator_optuna_recon.db?timeout=60" \
+--n-trials 100 \
+--n-comp 9 \
 --epochs 1500 \
 --batch-size 512 \
 --patience 500 \
---seed 1701
-
+--seed 1701 \
+--loss reconstruction_mse
 
 kill $GPU_MONITOR_PID
