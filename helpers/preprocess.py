@@ -62,7 +62,7 @@ def preprocess(data: dict, n_comp: int, log_power: bool = False) -> dict:
     Notes
     -----
     The preprocessing pipeline is:
-        1. (Optional) Apply log10 to all power spectra.
+        1. (Optional) Apply log to all power spectra.
         2. Fit a StandardScaler on training parameters and apply to all splits.
         3. Fit PCA on training power spectra; project all splits onto n_comp components.
         4. Fit a StandardScaler on training PCA coefficients and apply to all splits.
