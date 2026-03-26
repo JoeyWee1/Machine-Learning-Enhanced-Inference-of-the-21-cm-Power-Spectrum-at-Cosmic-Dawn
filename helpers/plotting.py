@@ -81,7 +81,7 @@ def plot_reconstructed_train(
         axes[2].set_xlabel(r"$k$  [Mpc$^{-1}$]")
         axes[2].set_ylabel("Fractional residual (%)")
         axes[2].set_title("Fractional residual")
-        
+
         plt.tight_layout()
         plt.show()
 
@@ -133,3 +133,89 @@ def pca_fractional_residual(processed, raw_data, n_comp=10):
     print(f"Mean fractional residual: {np.mean(residuals):.2f}%")
     print(f"95th percentile of fractional residuals: {np.percentile(residuals, 95):.2f}%")
     return residuals
+
+
+def plot_pca_train_weights(processed, raw_data, n_comp):
+    """
+    Print and plot scaled vs unscaled parameter ranges to motivate standardisation.
+
+    For each of the first n_comp input parameters (e.g. L40_xray, fesc10,
+    epsstar, h_fid), computes the value range before and after StandardScaler
+    and plots both distributions side by side on the same axes. This illustrates
+    how parameters with very different physical units and magnitudes are brought
+    to a common scale, which is important for stable neural network training.
+
+    Parameters
+    ----------
+    processed : dict
+        Output of preprocess(), must contain 'x_train' (scaled parameters
+        as a torch.Tensor).
+    raw_data : dict
+        Output of load_splits(), must contain 'raw_params_train'.
+    n_comp : int
+        Number of input parameter dimensions to plot. Should be <= 4 for
+        the default parameter set (L40_xray, fesc10, epsstar, h_fid).
+
+    Returns
+    -------
+    None
+        Prints range statistics and displays a figure with n_comp subplots,
+        each showing the unscaled and scaled distributions for one parameter.
+    """
+    param_names = ["L40_xray", "fesc10", "epsstar", "h_fid"]
+
+    unscaled_ranges = []
+    scaled_ranges   = []
+    unscaled_means = []
+    scaled_means   = []
+    unscaled_params = raw_data['raw_params_train']
+    scaled_params   = processed['x_train']
+
+    # scaled_params may be a torch.Tensor
+    if hasattr(scaled_params, 'cpu'):
+        scaled_params = scaled_params.cpu().numpy()
+
+    for i in range(0, 4):
+        feature_unscaled_weights = unscaled_params[i, :]
+        feature_scaled_weights   = scaled_params[i, :]
+        unscaled_ranges.append(feature_unscaled_weights.max() - feature_unscaled_weights.min())
+        scaled_ranges.append(feature_scaled_weights.max()   - feature_scaled_weights.min())
+        unscaled_means.append(feature_unscaled_weights.mean())
+        scaled_means.append(feature_scaled_weights.mean())
+
+    print("Unscaled:")
+    for i in range(4):
+        vals = unscaled_params[:, i]
+        print(f"Feature {i} has range {vals.min():.3e} to {vals.max():.3e} with mean {vals.mean():.3e}")
+
+    
+
+    print("Scaled:")
+    for i in range(4):
+        vals = scaled_params[:, i]
+        print(f"Feature {i} has range {vals.min():.3e} to {vals.max():.3e} with mean {vals.mean():.3e}")
+
+
+    fig, axes = plt.subplots(1, 4, figsize=(10, 8))
+    if n_comp == 1:
+        axes = [axes]
+
+    for i, ax in enumerate(axes):
+        name = param_names[i] if i < len(param_names) else f"param_{i}"
+
+        ax.hist(unscaled_params[:, i], bins=30, alpha=0.6,
+                color="steelblue", label="Unscaled")
+        ax.hist(scaled_params[:, i],   bins=30, alpha=0.6,
+                color="darkorange", label="Scaled")
+
+        ax.set_title(f"{name}\nrange: {unscaled_ranges[i]:.3g} → {scaled_ranges[i]:.3g}\nmean: {unscaled_means[i]:.3g} → {scaled_means[i]:.3g}")
+        ax.axvline(scaled_means[i], color="black", linestyle="--", linewidth=0.8)
+
+
+        ax.set_xlabel("Value")
+        ax.set_ylabel("Count")
+        ax.legend()
+
+    fig.suptitle("Parameter distributions before and after StandardScaler", fontsize=13)
+    plt.tight_layout()
+    plt.show()

@@ -24,7 +24,7 @@ nvidia-smi -l 60 &
 GPU_MONITOR_PID=$!
 
 
-python -u optuna_optimizev2.py \
+python -u optuna_optimize.py \
 --device cuda \
 --data-dir "$PROJECT/simulations" \
 --output-dir "$PROJECT/optuna_outputs" \
@@ -36,6 +36,7 @@ python -u optuna_optimizev2.py \
 --batch-size 512 \
 --patience 500 \
 --seed 1701 \
---loss reconstruction_mse
+--loss-mode reconstruction \
+--log-power
 
 kill $GPU_MONITOR_PID
