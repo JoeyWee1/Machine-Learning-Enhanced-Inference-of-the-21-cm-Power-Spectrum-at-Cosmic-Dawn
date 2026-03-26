@@ -219,3 +219,51 @@ def plot_pca_train_weights(processed, raw_data, n_comp):
     fig.suptitle("Parameter distributions before and after StandardScaler", fontsize=13)
     plt.tight_layout()
     plt.show()
+
+def plot_reconstructions(
+model_evaluation_data: dict,
+raw_data: dict,
+square_side: int = 5,
+)-> None:
+    """
+    Plots reconstructed power spectra against ground truth for a random subset of test samples.
+
+    Parameters
+    ----------
+    model_evaluation_data : dict
+        Output from `evaluate_model()`, containing reconstructed spectra and true spectra.
+    raw_data : dict
+        Raw data from the loading stage. Required keys:
+        - "power_test" : ndarray of shape (N_test, K)
+            Ground-truth power spectra for the test set.
+    square_side : int, optional
+        Number of random test samples to plot along each side of the square grid (default is 5).
+    """
+    N_test = raw_data["power_test"].shape[0] # How many test samples
+    n_samples = square_side * square_side
+    sample_indices = np.random.choice(N_test, size=n_samples-1, replace=False)
+    sample_indices = np.concatenate([[0], sample_indices])
+
+    fig, ax = plt.subplots(square_side, square_side, figsize = (3*square_side+3, 3*square_side+3))
+    for i, idx in enumerate(sample_indices):
+        ax[i//square_side,i%square_side].loglog(raw_data["k_test"][idx],raw_data["power_test"][idx], label="True")
+        ax[i//square_side,i%square_side].loglog(raw_data["k_test"][idx],model_evaluation_data["test_pred_spectra"][idx], '--',label="Predicted")
+        ax[i//square_side,i%square_side].set_xlabel("k-mode index")
+        ax[i//square_side,i%square_side].set_ylabel("Power Spectrum")
+        ax[i//square_side,i%square_side].set_title(f"Test Sample {idx} - MAPE: {model_evaluation_data['mean_test_error_per_sample'][idx]:.2f}%")
+        ax[i//square_side,i%square_side].grid()
+    ax[0,0].legend()
+    fig.suptitle("True vs Reconstructed Power Spectra")
+    fig.show()
+
+def plot_mape_distribution(model_evaluation_data: dict):
+    mape = model_evaluation_data["mean_test_error_per_sample"]
+    mean = model_evaluation_data['mean_percentage_error']
+    p95 = model_evaluation_data['p95_percentage_error']
+    plt.hist(mape, bins=75)
+    plt.axvline(np.mean(mape), label=f'Mean: {mean:.2f}', ls='--', c='k')
+    plt.axvline(np.quantile(mape, 0.95),label=f'95th percentile: {p95:.2f}', ls=':',  c='k')
+    plt.xlabel('Percentage error (%)')
+    plt.ylabel('Frequency')
+    plt.legend()
+    plt.show()
