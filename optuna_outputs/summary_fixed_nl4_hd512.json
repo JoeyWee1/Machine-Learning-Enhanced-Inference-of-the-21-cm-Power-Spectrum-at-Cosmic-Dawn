@@ -1,0 +1,14 @@
+{
+  "params": {
+    "num_layers": 4,
+    "hidden_dim": 512,
+    "lr": 0.0016729307114133733,
+    "weight_decay": 4.125123892293413e-06
+  },
+  "best_valid_loss": 0.09319200366735458,
+  "best_train_loss": 0.07799332961440086,
+  "best_epoch": 44,
+  "test_loss_normalised_space": 0.09939988702535629,
+  "mean_percentage_error": 1145.4345906896845,
+  "p95_percentage_error": 7401.767400524251
+}
