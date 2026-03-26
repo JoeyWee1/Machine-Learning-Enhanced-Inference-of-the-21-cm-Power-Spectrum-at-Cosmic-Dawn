@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
+import matplotlib.pyplot as plt
 
 def evaluate_model(
     model: nn.Module,
@@ -74,6 +75,11 @@ def evaluate_model(
     pred_weights_test = processed["weight_scaler"].inverse_transform(pred_y_test)
     test_pred_spectra = processed["pca"].inverse_transform(pred_weights_test)
 
+    test_pred_spectra = processed["pca"].inverse_transform(pred_weights_test)
+
+    if processed.get("log_power", False):
+        test_pred_spectra = np.exp(test_pred_spectra)
+
     denom = np.maximum(np.abs(raw_data["power_test"]), 1e-8)
     mean_test_error = 100.0 * np.mean(
         np.abs(raw_data["power_test"] - test_pred_spectra) / denom,
@@ -89,3 +95,5 @@ def evaluate_model(
         "test_pred_spectra":           test_pred_spectra,
         "mean_test_error_per_sample":  mean_test_error,
     }
+
+

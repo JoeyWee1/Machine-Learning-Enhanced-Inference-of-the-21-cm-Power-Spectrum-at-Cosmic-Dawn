@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import optuna
-from set_seed import set_seed
+from helpers.set_seed import set_seed
 
 def train_model(
     model: nn.Module,
