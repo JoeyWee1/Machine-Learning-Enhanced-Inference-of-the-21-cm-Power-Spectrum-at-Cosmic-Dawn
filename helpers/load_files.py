@@ -1,5 +1,6 @@
 import numpy as np
 from pathlib import Path
+from typing import Tuple
 
 def unpack_simulations(simulations: list[dict]) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
@@ -36,15 +37,38 @@ def unpack_simulations(simulations: list[dict]) -> Tuple[np.ndarray, np.ndarray,
 
 
 def load_splits(data_dir: Path) -> dict:
-    '''
-    Loads and splits simulation data from .npz files in the specified directory.
+    """
+    Discovers all .npz simulation files in a directory, splits them into
+    train/validation/test sets, and returns the unpacked arrays for each split.
 
-    Args:
-        data_dir (Path): The directory containing the .npz files.
+    Files are sorted before splitting to ensure reproducibility. The split
+    is deterministic and file-level (not sample-level):
+        - Train : first 80%
+        - Val   : next  10%
+        - Test  : final 10%
 
-    Returns:
-        dict: A dictionary containing the training, validation, and test splits for parameters, power spectra, and k values, as well as the corresponding file paths.
-    '''
+    Parameters
+    ----------
+    data_dir : Path
+        Directory to glob for "*.npz" simulation files.
+
+    Returns
+    -------
+    dict
+        - "raw_params_train/val/test" : ndarray of shape (N, n_params)
+            Cosmological parameters for each split.
+        - "power_train/val/test" : ndarray of shape (N, K)
+            Power spectra for each split.
+        - "k_train/val/test" : ndarray of shape (N, K)
+            Wavenumber arrays for each split.
+        - "train/val/test_files" : list of str
+            Paths of the .npz files assigned to each split.
+
+    Raises
+    ------
+    FileNotFoundError
+        If no .npz files are found in `data_dir`.
+    """
     files = sorted(data_dir.glob("*.npz"))
     if not files:
         raise FileNotFoundError(f"No .npz files found in {data_dir}")
