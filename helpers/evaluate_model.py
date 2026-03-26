@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
+import matplotlib.pyplot as plt
 
 def evaluate_model(
     model: nn.Module,
@@ -94,3 +95,5 @@ def evaluate_model(
         "test_pred_spectra":           test_pred_spectra,
         "mean_test_error_per_sample":  mean_test_error,
     }
+
+
