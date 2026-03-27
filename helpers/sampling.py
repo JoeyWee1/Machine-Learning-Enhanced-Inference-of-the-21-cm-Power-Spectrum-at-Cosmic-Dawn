@@ -136,12 +136,114 @@ def ln_post(theta, model, p_obs, processed, unscaled_feature_domains):
         falls outside its prior support (from ln_uniform_prior).
     """
 
+    
+    eps, L40, fesc10, h, fnoise = theta
+
+    lnPi = ln_uniform_prior(h=h, eps=eps,L40=L40,fesc10=fesc10,fnoise=fnoise, unscaled_feature_domains=unscaled_feature_domains)
     if not np.isfinite(lnPi):  # reject early if outside prior support
         return -np.inf
-    eps, L40, fesc10, h, fnoise = theta
-    lnPi = ln_uniform_prior(h=h, eps=eps,L40=L40,fesc10=fesc10,fnoise=fnoise, unscaled_feature_domains=unscaled_feature_domains)
+
     lnL = ln_likelihood(eps, L40, fesc10, h, fnoise, model, p_obs, processed)
     return lnL + lnPi
 
-def generate_chain
+def generate_chain(
+        n_walkers: int = 32,
+        steps: int = 10000,
+        discard: int = 1000,
+        unscaled_feature_domains: dict = None,
+        model=None,
+        p_obs: np.ndarray = None,
+        processed: dict = None,
+) -> tuple:
+    """
+    Runs an emcee ensemble MCMC sampler to draw posterior samples for the
+    21-cm power spectrum parameters.
+
+    Parameters
+    ----------
+    n_walkers : int, optional
+        Number of ensemble walkers. Must be even and >= 2 * ndim. Default 32.
+    steps : int, optional
+        Number of MCMC steps per walker. Default 10000.
+    discard : int, optional
+        Number of initial steps to discard as burn-in. Default 1000.
+    unscaled_feature_domains : dict
+        Dictionary mapping parameter names to [min, max] physical bounds,
+        used to construct log-uniform priors and initialise walker positions.
+        Expected keys: 'epsilon', 'L40_xray', 'fesc10', 'h'.
+    model : nn.Module
+        Trained neural network emulator for the 21-cm power spectrum.
+    p_obs : np.ndarray of shape (54,)
+        Observed power spectrum at each k mode.
+    processed : dict
+        Preprocessing artefacts from `preprocess()`, passed to
+        `predict_spectrum` inside `ln_post`.
+
+    Returns
+    -------
+    dict with keys:
+        "sampler" : emcee.EnsembleSampler
+            The sampler object after running, containing the full chain.
+        "mean_frac" : float
+            Mean acceptance fraction across all walkers. Healthy range ~0.2-0.5.
+        "taus" : np.ndarray of shape (5,)
+            Autocorrelation time estimate for each parameter.
+        "mean_tau" : float
+            Mean autocorrelation time across all parameters.
+        "tau" : int
+            Maximum autocorrelation time, used for thinning.
+        "samples" : np.ndarray of shape (n_samples, 5)
+            Flattened posterior samples after burn-in and thinning,
+            columns [eps, L40, fesc10, h, fnoise].
+    """
+    
+    # Draw initial positions from our uniform prior
+    def make_prior(key):
+        lo, hi = unscaled_feature_domains[key]
+        return loguniform(a=0.5 * lo, b=1.5 * hi)
+
+    priors = {
+        'epsilon':  make_prior('epsilon'),
+        'L40_xray': make_prior('L40_xray'),
+        'fesc10':   make_prior('fesc10'),
+        'h':        make_prior('h'),
+        'fnoise':   loguniform(a=1e-3, b=1e1),
+    }
+    rng = np.random.default_rng(seed=1701)
+    initial_pos = np.column_stack([
+        prior.rvs(size=n_walkers, random_state=rng)
+        for prior in priors.values()
+    ])
+
+    sampler = mc.EnsembleSampler(
+        n_walkers,
+        ndim = 5,
+        log_prob_fn = ln_post,
+        args = [ model, p_obs, processed, unscaled_feature_domains]
+    )
+
+    sampler.run_mcmc(initial_pos, steps, progress=True)
+
+    mean_frac =sampler.acceptance_fraction.mean()
+
+    taus = sampler.get_autocorr_time() # for thinning
+    mean_tau = np.mean(taus)
+    tau = int(max(taus)) # use the maximum autocorrelation time across all parameters for thinning
+
+    print(f"Mean acceptance fraction: {mean_frac:.3f}")
+    print(f"Mean autocorrelation time: {mean_tau:.2f} steps")
+
+    samples = sampler.get_chain(discard=discard, thin=10*tau, flat=True) # shape (nwalkers * nsteps/thin, ndim) # review discard by plotting
+
+
+    return {
+        "sampler": sampler,
+        "mean_frac": mean_frac,
+        "taus": taus,
+        "mean_tau": mean_tau,
+        "tau": tau,
+        "samples": samples,  # shape (n_samples, 5): [eps, L40, fesc10, h, fnoise]
+    }
+
+
 
