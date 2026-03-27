@@ -150,6 +150,7 @@ def generate_chain(
         n_walkers: int = 32,
         steps: int = 10000,
         discard: int = 1000,
+        tf: int = 2,
         unscaled_feature_domains: dict = None,
         model=None,
         p_obs: np.ndarray = None,
@@ -233,7 +234,7 @@ def generate_chain(
     print(f"Mean acceptance fraction: {mean_frac:.3f}")
     print(f"Mean autocorrelation time: {mean_tau:.2f} steps")
 
-    samples = sampler.get_chain(discard=discard, thin=10*tau, flat=True) # shape (nwalkers * nsteps/thin, ndim) # review discard by plotting
+    samples = sampler.get_chain(discard=discard, thin=tf*tau, flat=True) # shape (nwalkers * nsteps/thin, ndim) # review discard by plotting
 
 
     return {
