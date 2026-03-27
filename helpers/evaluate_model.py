@@ -72,10 +72,8 @@ def evaluate_model(
         nn.functional.mse_loss(torch.tensor(pred_y_test), y_test.cpu()).item()
     )
 
-    pred_weights_test = processed["weight_scaler"].inverse_transform(pred_y_test)
-    test_pred_spectra = processed["pca"].inverse_transform(pred_weights_test)
-
-    test_pred_spectra = processed["pca"].inverse_transform(pred_weights_test)
+    pred_weights_test = processed["weight_scaler"].inverse_transform(pred_y_test) # undo the standardization of the PCA coefficients to get raw PCA coefficients
+    test_pred_spectra = processed["pca"].inverse_transform(pred_weights_test) #  dot product with PCA eigenvectors to get reconstructed spectra in log space if log_power was True, or linear space if log_power was False
 
     if processed.get("log_power", False):
         test_pred_spectra = np.exp(test_pred_spectra)
@@ -95,5 +93,50 @@ def evaluate_model(
         "test_pred_spectra":           test_pred_spectra,
         "mean_test_error_per_sample":  mean_test_error,
     }
+
+def predict_spectrum(
+        model: nn.Module,
+        params: np.ndarray,
+        processed: dict,
+) -> np.ndarray:
+    """
+    Predicts the power spectrum for a single set of input parameters.
+
+    Parameters
+    ----------
+    model : nn.Module
+        Trained emulator, as returned by `train_model`.
+    params : np.ndarray of shape (4,)
+        Standardized input parameters in the order:
+        ["L40_xray", "fesc10", "epsstar", "h_fid"].
+    processed : dict
+        Preprocessing artefacts from `preprocess()`. Required keys:
+        - "weight_scaler" : StandardScaler
+            Used to inverse-transform predicted PCA coefficients.
+        - "pca" : PCA
+            Used to reconstruct the power spectrum from unscaled coefficients
+            via a dot product with the principal component eigenvectors.
+        - "log_power" : bool, optional
+            If True, the reconstructed spectrum is exponentiated to undo
+            the log-transform applied during preprocessing.
+
+    Returns
+    -------
+    np.ndarray of shape (54,)
+        Reconstructed power spectrum in linear (not log) space.
+    """
+    model.eval()
+    with torch.no_grad():
+        pred_weights_scaled = model(params).cpu().numpy()
+    
+    pred_weights_raw = processed["weight_scaler"].inverse_transform(pred_weights_scaled) # undo the standardization of the PCA coefficients to get raw PCA coefficients
+    pred_spectra = processed["pca"].inverse_transform(pred_weights_raw) #  dot product with PCA eigenvectors to get reconstructed spectra in log space 
+
+    if processed.get("log_power", False):
+        pred_spectra = np.exp(pred_spectra)
+
+    return pred_spectra
+
+
 
 
