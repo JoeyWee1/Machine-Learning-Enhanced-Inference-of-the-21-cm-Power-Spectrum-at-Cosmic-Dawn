@@ -140,7 +140,7 @@ def plot_pca_train_weights(processed, raw_data, n_comp):
     Print and plot scaled vs unscaled parameter ranges to motivate standardisation.
 
     For each of the first n_comp input parameters (e.g. L40_xray, fesc10,
-    epsstar, h_fid), computes the value range before and after StandardScaler
+    epsilon, h), computes the value range before and after StandardScaler
     and plots both distributions side by side on the same axes. This illustrates
     how parameters with very different physical units and magnitudes are brought
     to a common scale, which is important for stable neural network training.
@@ -154,15 +154,18 @@ def plot_pca_train_weights(processed, raw_data, n_comp):
         Output of load_splits(), must contain 'raw_params_train'.
     n_comp : int
         Number of input parameter dimensions to plot. Should be <= 4 for
-        the default parameter set (L40_xray, fesc10, epsstar, h_fid).
+        the default parameter set (L40_xray, fesc10, epsilon, h).
 
     Returns
     -------
+    unscaled_feature_domains: dict
+        Keys are parameter names (e.g. "L40_xray"), values are [min, max]
+        of that parameter in the original unscaled space.
     None
         Prints range statistics and displays a figure with n_comp subplots,
         each showing the unscaled and scaled distributions for one parameter.
     """
-    param_names = ["L40_xray", "fesc10", "epsstar", "h_fid"]
+    param_names = ["L40_xray", "fesc10", "epsilon", "h"]
 
     unscaled_ranges = []
     scaled_ranges   = []
@@ -183,9 +186,12 @@ def plot_pca_train_weights(processed, raw_data, n_comp):
         unscaled_means.append(feature_unscaled_weights.mean())
         scaled_means.append(feature_scaled_weights.mean())
 
+    unscaled_feature_domains = {}
+
     print("Unscaled:")
     for i in range(4):
         vals = unscaled_params[:, i]
+        unscaled_feature_domains[param_names[i]] = [float(vals.min()), float(vals.max())]
         print(f"Feature {i} has range {vals.min():.3e} to {vals.max():.3e} with mean {vals.mean():.3e}")
 
     
@@ -219,6 +225,8 @@ def plot_pca_train_weights(processed, raw_data, n_comp):
     fig.suptitle("Parameter distributions before and after StandardScaler", fontsize=13)
     plt.tight_layout()
     plt.show()
+
+    return unscaled_feature_domains
 
 def plot_reconstructions(
 model_evaluation_data: dict,

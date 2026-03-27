@@ -135,7 +135,7 @@ def predict_spectrum(
     if processed.get("log_power", False):
         pred_spectra = np.exp(pred_spectra)
 
-    return pred_spectra
+    return pred_spectra[0]
 
 
 
