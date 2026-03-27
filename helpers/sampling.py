@@ -98,5 +98,50 @@ def ln_likelihood(eps, L40, fesc10, h, fnoise, model, p_obs, processed):
     return lnL
 
 def ln_post(theta, model, p_obs, processed, unscaled_feature_domains):
-    
+    """
+    Computes the log-posterior probability for the 21-cm power spectrum model.
+
+    Combines the log-prior and log-likelihood following Bayes' theorem:
+        ln p(theta | D) = ln p(D | theta) + ln p(theta) + const.
+
+    Parameters
+    ----------
+    theta : array-like of shape (5,)
+        Parameter vector in the order [eps, L40, fesc10, h, fnoise]:
+        - eps : float
+            Star formation efficiency in galaxies of 10 solar masses.
+        - L40 : float
+            X-ray luminosity of early galaxies.
+        - fesc10 : float
+            Escape fraction of ionising photons in galaxies of 10 solar masses.
+        - h : float
+            Hubble expansion rate parameter.
+        - fnoise : float
+            Noise nuisance parameter, marginalised over during sampling.
+    model : nn.Module
+        Trained neural network emulator for the 21-cm power spectrum.
+    p_obs : np.ndarray of shape (54,)
+        Observed power spectrum at each k mode.
+    processed : dict
+        Preprocessing artefacts from `preprocess()`, passed to
+        `predict_spectrum`.
+    unscaled_feature_domains : dict
+        Dictionary mapping parameter names to [min, max] physical bounds,
+        used to construct the log-uniform priors.
+
+    Returns
+    -------
+    float
+        Log-posterior ln p(theta | D). Returns -inf if any parameter
+        falls outside its prior support (from ln_uniform_prior).
+    """
+
+    if not np.isfinite(lnPi):  # reject early if outside prior support
+        return -np.inf
+    eps, L40, fesc10, h, fnoise = theta
+    lnPi = ln_uniform_prior(h=h, eps=eps,L40=L40,fesc10=fesc10,fnoise=fnoise, unscaled_feature_domains=unscaled_feature_domains)
+    lnL = ln_likelihood(eps, L40, fesc10, h, fnoise, model, p_obs, processed)
+    return lnL + lnPi
+
+def generate_chain
 
