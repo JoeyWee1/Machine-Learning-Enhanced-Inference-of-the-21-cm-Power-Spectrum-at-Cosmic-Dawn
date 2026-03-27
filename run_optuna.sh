@@ -31,10 +31,10 @@ python -u optuna_optimize.py \
 --study-name emulator_optuna-recon \
 --storage "sqlite:///$PROJECT/optuna_outputs/emulator_optuna_recon.db?timeout=60" \
 --n-trials 100 \
---n-comp 10 \
---epochs 1500 \
+--n-comp 3 \
+--epochs 1000 \
 --batch-size 512 \
---patience 500 \
+--patience 250 \
 --seed 1701 \
 --loss-mode reconstruction \
 --log-power
