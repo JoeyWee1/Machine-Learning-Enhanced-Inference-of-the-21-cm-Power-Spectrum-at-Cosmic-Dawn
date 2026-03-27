@@ -127,7 +127,11 @@ def predict_spectrum(
     """
     model.eval()
     with torch.no_grad():
-        pred_weights_scaled = model(params).cpu().numpy()
+        params_tensor = torch.tensor(params, dtype=torch.float32)
+        pred_weights_scaled = model(params_tensor).cpu().numpy() 
+        # Inverse transform expects (1, n_comp) rn we have (n_comp,)
+        if pred_weights_scaled.ndim == 1:
+            pred_weights_scaled = pred_weights_scaled.reshape(1, -1) 
     
     pred_weights_raw = processed["weight_scaler"].inverse_transform(pred_weights_scaled) # undo the standardization of the PCA coefficients to get raw PCA coefficients
     pred_spectra = processed["pca"].inverse_transform(pred_weights_raw) #  dot product with PCA eigenvectors to get reconstructed spectra in log space 
