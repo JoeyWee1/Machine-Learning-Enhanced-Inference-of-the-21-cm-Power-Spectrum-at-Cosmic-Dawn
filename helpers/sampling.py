@@ -194,6 +194,14 @@ def ln_post_vec(thetas, model, p_obs, processed, priors):
 
     return results
 
+def ln_post_vec_log(phis, model, p_obs, processed, priors): #wrap function that calculates vectors of lnPosteriors to accept log-space positions
+    thetas = np.exp(phis)                      
+    log_probs = ln_post_vec(thetas, model, p_obs, processed, priors)
+    jacobian = phis.sum(axis=1)              
+    finite = np.isfinite(log_probs)
+    log_probs[finite] += jacobian[finite]
+    return log_probs  
+
 
 def generate_chain(
         n_walkers: int = 32,
@@ -250,10 +258,10 @@ def generate_chain(
     priors = _build_priors(unscaled_feature_domains)
 
     rng = np.random.default_rng(seed=1701)
-    initial_pos = np.column_stack([
+    initial_pos = np.log(np.column_stack([
         priors[key].rvs(size=n_walkers, random_state=rng)
         for key in ('epsilon', 'L40_xray', 'fesc10', 'h', 'fnoise')
-    ])
+    ]))
 
     # Set eval mode once before sampling — not per-call inside ln_post_vec
     model.eval()
@@ -263,7 +271,7 @@ def generate_chain(
     sampler = mc.EnsembleSampler(
         n_walkers,
         ndim=5,
-        log_prob_fn=ln_post_vec,
+        log_prob_fn=ln_post_vec_log,
         args=[model, p_obs, processed, priors],
         vectorize=True,
     )
@@ -278,7 +286,8 @@ def generate_chain(
     print(f"Mean acceptance fraction: {mean_frac:.3f}")
     print(f"Mean autocorrelation time: {mean_tau:.2f} steps")
 
-    samples = sampler.get_chain(discard=discard, thin=tf * tau, flat=True)
+    thinned_samples = sampler.get_chain(discard=discard, thin=tf * tau, flat=False)
+    unthinned_samples = sampler.get_chain(discard=discard, flat=False)
 
     return {
         "sampler": sampler,
@@ -286,5 +295,6 @@ def generate_chain(
         "taus": taus,
         "mean_tau": mean_tau,
         "tau": tau,
-        "samples": samples,
+        "thinned_samples": thinned_samples,
+        "unthinned_samples": unthinned_samples,
     }
