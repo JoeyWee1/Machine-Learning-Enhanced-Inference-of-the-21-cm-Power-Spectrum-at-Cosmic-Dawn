@@ -125,10 +125,9 @@ def predict_spectrum(
     np.ndarray of shape (54,)
         Reconstructed power spectrum in linear (not log) space.
     """
-    model.eval()
     with torch.no_grad():
         params_tensor = torch.tensor(params, dtype=torch.float32)
-        pred_weights_scaled = model(params_tensor).cpu().numpy() 
+        pred_weights_scaled = model(params_tensor).cpu().numpy()
         # Inverse transform expects (1, n_comp) rn we have (n_comp,)
         if pred_weights_scaled.ndim == 1:
             pred_weights_scaled = pred_weights_scaled.reshape(1, -1) 
