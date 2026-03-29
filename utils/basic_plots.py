@@ -163,3 +163,49 @@ def plot_reconstructed_train(
         plt.show()
 
     return float(frac_residual.mean())
+
+def pca_fractional_residual(processed: dict, n_comp: int = 10) -> list[float]:
+    """
+    Compute and plot the distribution of PCA reconstruction residuals over the training set.
+
+    Reconstructs every training power spectrum from its PCA coefficients using
+    plot_reconstructed_train(), collects the mean fractional residual for each,
+    and plots a histogram with mean and 95th percentile reference lines.
+
+    Parameters
+    ----------
+    processed : dict
+        Output of preprocess(). Must contain 'params_train_scaled' to determine
+        the number of training samples, plus all keys required by
+        plot_reconstructed_train().
+    n_comp : int, optional
+        Number of PCA components to use in each reconstruction. Default 10.
+
+    Returns
+    -------
+    list of float
+        Mean fractional residual (%) for each training sample.
+
+    Example
+    -------
+    >>> residuals = pca_fractional_residual(processed, n_comp=10)
+    Mean fractional residual: 0.43%
+    95th percentile of fractional residuals: 1.12%
+    """
+    n_samps = len(processed['params_train_raw'])
+    residuals = []
+    for j in range(0,n_samps):
+        residuals.append(plot_reconstructed_train(processed, n_comp=n_comp, plot=False, idx=j))
+
+    # Plot histogram
+    plt.figure(figsize=(6,6), dpi = 150)
+    plt.axvline(np.mean(residuals), color="red", linestyle="--", label=f"Mean: {np.mean(residuals):.2f}%")
+    plt.axvline(np.percentile(residuals, 95), color="orange", linestyle="--", label=f"p95:  {np.percentile(residuals, 95):.2f}%")
+    plt.hist(residuals, bins= 30)
+    plt.title("Distibution of the mean fractional residuals in training set from PCA reconstruction")
+    plt.xlabel("Mean fractional residual")
+    plt.ylabel("Count")
+    plt.legend()
+    plt.show()
+
+    return residuals

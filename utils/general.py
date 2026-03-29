@@ -1,4 +1,6 @@
 import numpy as np
+import random
+import torch
 from pathlib import Path
 from typing import Tuple
 
@@ -102,3 +104,13 @@ def load_splits(data_dir: Path) -> dict:
         "k_val": k_val,
         "k_test": k_test,
     }
+
+def set_seed(seed: int = 1701) -> None:
+    """
+    Sets the random seed for reproducibility across random, NumPy, and PyTorch.
+    """
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
