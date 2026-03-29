@@ -5,70 +5,40 @@ from sklearn.decomposition import PCA
 
 def preprocess(data: dict, n_comp: int, log_power: bool = False) -> dict:
     """
-    Preprocesses raw simulation data for neural network training via parameter
-    standardization, PCA compression of power spectra, and coefficient standardization.
+    Preprocess raw simulation data for emulator training.
+
+    Standardizes input parameters, compresses power spectra via PCA, and
+    standardizes the resulting PCA coefficients. All scalers and PCA are
+    fitted on training data only to prevent data leakage.
 
     Parameters
     ----------
     data : dict
-        Dictionary containing raw data splits with the following keys:
-        - "raw_params_train/val/test" : array-like of shape (N, n_params)
-            Cosmological/simulation parameters for each split.
-        - "power_train/val/test" : array-like of shape (N, n_k)
-            Power spectra for each split.
-        - "k_train/val/test" : array-like
-            Wavenumber arrays for each split.
-        - "train/val/test_files" : list of str
-            Source file paths for each split.
+        Raw simulation data with keys:
+        - 'raw_params_train/val/test' : ndarray of shape (N, n_params)
+        - 'power_train/val/test'      : ndarray of shape (N, n_k)
     n_comp : int
-        Number of PCA components to retain when compressing the power spectra.
+        Number of PCA components to retain.
     log_power : bool, optional
-        If True, applies log10 to the power spectra before PCA. Requires all
-        power values to be strictly positive. The PCA and scalers are then fit
-        in log space; `evaluate_model` and any plotting code must account for
-        this when comparing against raw spectra. Default: False.
+        If True, applies log to power spectra before PCA. All power values
+        must be strictly positive. Default False.
 
     Returns
     -------
     dict
-        - "params_scaler" : StandardScaler
-            Fitted scaler for the input parameters.
-        - "weight_scaler" : StandardScaler
-            Fitted scaler for the PCA-projected coefficients.
-        - "pca" : PCA
-            Fitted PCA object with n_comp components.
-        - "W" : ndarray of shape (n_k, n_comp)
-            PCA eigenvectors (principal components transposed).
-        - "eig_vals" : ndarray of shape (n_comp,)
-            Explained variance of each principal component.
-        - "log_power" : bool
-            Whether natural logarithm was applied to the power spectra.
-        - "params_train/val/test" : ndarray of shape (N, n_params)
-            Standardized input parameters for each split.
-        - "projected_coeffs_train/val/test" : ndarray of shape (N, n_comp)
-            Raw PCA-projected power spectrum coefficients for each split.
-        - "y_train/val/test_np" : ndarray of shape (N, n_comp)
-            Standardized PCA coefficients as NumPy arrays for each split.
-        - "x_train/val/test" : torch.Tensor of shape (N, n_params), dtype=float32
-            Standardized parameters as PyTorch tensors for each split.
-        - "y_train/val/test" : torch.Tensor of shape (N, n_comp), dtype=float32
-            Standardized PCA coefficients as PyTorch tensors for each split.
+        - 'params_scaler'                  : StandardScaler fitted on training parameters.
+        - 'weight_scaler'                  : StandardScaler fitted on training PCA coefficients.
+        - 'pca'                            : PCA object fitted on training power spectra.
+        - 'evecs'                          : ndarray of shape (n_k, n_comp), PCA eigenvectors.
+        - 'explained_variance_ratio'       : ndarray of shape (n_comp,).
+        - 'log_power'                      : bool, whether log was applied to power spectra.
+        - 'params_train/val/test_scaled'   : ndarray of shape (N, n_params), scaled parameters.
+        - 'pca_weights_train/val/test_scaled' : Tensor of shape (N, n_comp), scaled PCA coefficients.
 
     Raises
     ------
     ValueError
-        If `log_power=True` and any power spectrum value is non-positive.
-
-    Notes
-    -----
-    The preprocessing pipeline is:
-        1. (Optional) Apply log to all power spectra.
-        2. Fit a StandardScaler on training parameters and apply to all splits.
-        3. Fit PCA on training power spectra; project all splits onto n_comp components.
-        4. Fit a StandardScaler on training PCA coefficients and apply to all splits.
-
-    All scalers and the PCA object are fitted exclusively on training data to
-    prevent data leakage into the validation and test splits.
+        If log_power=True and any power spectrum value is non-positive.
     """
     # Extract powers
     power_train = data["power_train"]
