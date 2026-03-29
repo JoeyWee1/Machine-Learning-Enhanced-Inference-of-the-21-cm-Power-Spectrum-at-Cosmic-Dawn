@@ -1,8 +1,9 @@
 import numpy as np
 import corner
 import matplotlib.pyplot as plt
+from dynesty.utils import resample_equal
 
-def plot_corner(unthinned_chain: np.ndarray, diagnostic: dict, df: int = 10) -> None:
+def plot_emcee_corner(unthinned_chain: np.ndarray, diagnostic: dict, df: int = 10) -> None:
     """
     Plot a corner plot of the posterior samples from an emcee chain.
 
@@ -36,7 +37,7 @@ def plot_corner(unthinned_chain: np.ndarray, diagnostic: dict, df: int = 10) -> 
     
     labels  = ["L40_xray", "fesc10", "epsilon", "h", "fnoise"]
 
-    plt.figure(figsize=(10, 10), dpi=150)
+    plt.figure(figsize=(8, 8), dpi=150)
     corner.corner(
         flat,
         labels=labels,
@@ -44,3 +45,43 @@ def plot_corner(unthinned_chain: np.ndarray, diagnostic: dict, df: int = 10) -> 
         quantiles=[0.16, 0.5, 0.84],
     )
     plt.show()
+
+def plot_nested_corner(results) -> np.ndarray:
+    """
+    Plot a corner plot from dynesty nested sampling results.
+
+    Reweights and resamples the nested sampling chain into equal-weight
+    posterior samples before plotting marginal and joint distributions
+    for the 5 model parameters.
+
+    Parameters
+    ----------
+    results : dynesty.results.Results
+        Output of sampler.results after running dynesty nested sampling.
+        Required attributes:
+        - 'logwt'    : ndarray of shape (n_samples,), log importance weights.
+        - 'logz'     : ndarray of shape (n_samples,), running log evidence estimate.
+        - 'samples'  : ndarray of shape (n_samples, n_params), raw samples.
+
+    Returns
+    -------
+    ndarray of shape (n_resampled, 5)
+        Equal-weight posterior samples after resampling.
+
+    Notes
+    -----
+    Quantiles shown are 16th, 50th, and 84th percentiles (median ± 1σ).
+    """
+    labels  = ["L40_xray", "fesc10", "epsilon", "h", "fnoise"]
+    weights = np.exp(results.logwt - results.logz[-1])
+    samples = resample_equal(results.samples, weights)   # (n_samples, 5)
+
+    fig = corner.corner(
+        samples,
+        labels=labels,
+        show_titles=True,
+        quantiles=[0.16, 0.5, 0.84],
+    )
+
+    plt.show()
+    return samples
