@@ -52,15 +52,15 @@ def make_prior_transform(domains: dict):
     Return a function mapping u ~ Uniform[0,1]^5 to physical parameters
     under log-uniform priors (matching helpers/sampling.py).
 
-    Parameter order: [eps, L40, fesc10, h, fnoise]
+    Parameter order: [L40, fesc10, eps, h, fnoise]
 
     Prior support is widened to [0.5*lo, 1.5*hi] per domain key,
     matching _build_priors() in sampling.py.
     """
     bounds = [
-        (0.5 * domains['epsilon'][0],  1.5 * domains['epsilon'][1]),
         (0.5 * domains['L40_xray'][0], 1.5 * domains['L40_xray'][1]),
         (0.5 * domains['fesc10'][0],   1.5 * domains['fesc10'][1]),
+        (0.5 * domains['epsilon'][0],  1.5 * domains['epsilon'][1]),
         (0.5 * domains['h'][0],        1.5 * domains['h'][1]),
         (1e-3, 1e1),   # fnoise
     ]
@@ -83,7 +83,7 @@ def make_log_likelihood(model, p_obs: np.ndarray, processed: dict):
     single vector call per evaluation.
     """
     def log_likelihood(theta):
-        eps, L40, fesc10, h, fnoise = theta
+        L40, fesc10, eps, h, fnoise = theta
 
         with torch.no_grad():
             # Model input order: [L40, fesc10, eps, h]
@@ -163,11 +163,11 @@ def plot_corner(results, truths=None, output_path=None):
     ----------
     results : dynesty.results.Results
     truths : list of float or None
-        True parameter values to mark, order [eps, L40, fesc10, h, fnoise].
+        True parameter values to mark, order [L40, fesc10, eps, h, fnoise].
     output_path : Path or str or None
         If given, save the figure there.
     """
-    labels  = ["epsilon", "L40_xray", "fesc10", "h", "fnoise"]
+    labels  = ["L40_xray", "fesc10", "epsilon", "h", "fnoise"]
     weights = np.exp(results.logwt - results.logz[-1])
     samples = resample_equal(results.samples, weights)   # (n_samples, 5)
 
@@ -267,8 +267,8 @@ def main():
     else:
         p_obs        = raw_data["power_test"][args.obs_index]
         true_params  = raw_data["raw_params_test"][args.obs_index]  # [L40, fesc10, eps, h]
-        truths       = [true_params[2], true_params[0], true_params[1], true_params[3], None]
-        print(f"True params [eps, L40, fesc10, h]: {truths[:4]}")
+        truths       = [true_params[0], true_params[1], true_params[2], true_params[3], None]
+        print(f"True params [L40, fesc10, eps, h]: {truths[:4]}")
 
     print(f"\nRunning dynesty (nlive={args.nlive}) ...")
     results = build_sampler(model, processed, p_obs, domains, nlive=args.nlive)

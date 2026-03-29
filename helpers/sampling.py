@@ -37,17 +37,17 @@ def _build_priors(unscaled_feature_domains: dict) -> dict:
     }
 
 
-def ln_uniform_prior(h, eps, L40, fesc10, fnoise, priors):
+def ln_uniform_prior(L40, fesc10, eps, h, fnoise, priors):
     """
     Compute the joint log-prior probability using pre-built prior objects.
 
     Parameters
     ----------
-    h, eps, L40, fesc10, fnoise : float
+    L40, fesc10, eps, h, fnoise : float
         Parameter values.
     priors : dict
-        Pre-built loguniform objects keyed by 'h', 'epsilon', 'L40_xray',
-        'fesc10', 'fnoise'. Build once with _build_priors().
+        Pre-built loguniform objects keyed by 'L40_xray', 'fesc10',
+        'epsilon', 'h', 'fnoise'. Build once with _build_priors().
 
     Returns
     -------
@@ -96,7 +96,7 @@ def ln_post(theta, model, p_obs, processed, priors):
     Parameters
     ----------
     theta : array-like of shape (5,)
-        Parameter vector [eps, L40, fesc10, h, fnoise].
+        Parameter vector [L40, fesc10, eps, h, fnoise].
     model : nn.Module
         Trained emulator, in eval() mode.
     p_obs : np.ndarray of shape (54,)
@@ -111,10 +111,10 @@ def ln_post(theta, model, p_obs, processed, priors):
     float
         Log-posterior. -inf if outside prior support.
     """
-    eps, L40, fesc10, h, fnoise = theta
+    L40, fesc10, eps, h, fnoise = theta
 
-    lnPi = ln_uniform_prior(h=h, eps=eps, L40=L40, fesc10=fesc10,
-                            fnoise=fnoise, priors=priors)
+    lnPi = ln_uniform_prior(L40=L40, fesc10=fesc10, eps=eps,
+                            h=h, fnoise=fnoise, priors=priors)
     if not np.isfinite(lnPi):
         return -np.inf
 
@@ -142,7 +142,7 @@ def ln_post_vec(thetas, model, p_obs, processed, priors):
     Parameters
     ----------
     thetas : np.ndarray of shape (n, 5)
-        Walker positions, columns [eps, L40, fesc10, h, fnoise].
+        Walker positions, columns [L40, fesc10, eps, h, fnoise].
     model : nn.Module
         Trained emulator, in eval() mode.
     p_obs : np.ndarray of shape (54,)
@@ -163,8 +163,8 @@ def ln_post_vec(thetas, model, p_obs, processed, priors):
     valid = np.ones(n, dtype=bool)
 
     # Prior check for all walkers — no NN calls yet
-    for i, (eps, L40, fesc10, h, fnoise) in enumerate(thetas):
-        lp = ln_uniform_prior(h, eps, L40, fesc10, fnoise, priors)
+    for i, (L40, fesc10, eps, h, fnoise) in enumerate(thetas):
+        lp = ln_uniform_prior(L40, fesc10, eps, h, fnoise, priors)
         if not np.isfinite(lp):
             valid[i] = False
         else:
@@ -175,8 +175,8 @@ def ln_post_vec(thetas, model, p_obs, processed, priors):
 
     # Single batched forward pass for all valid walkers
     valid_thetas = thetas[valid]
-    # Model input order: [L40, fesc10, eps, h] — columns [1, 2, 0, 3] of theta
-    params_batch = valid_thetas[:, [1, 2, 0, 3]]
+    # Model input order: [L40, fesc10, eps, h] — columns [0, 1, 2, 3] of theta
+    params_batch = valid_thetas[:, :4]
 
     with torch.no_grad():
         params_tensor = torch.tensor(params_batch, dtype=torch.float32)
@@ -252,7 +252,7 @@ def generate_chain(
             Maximum autocorrelation time, used for thinning.
         "samples" : np.ndarray of shape (n_samples, 5)
             Flattened posterior samples after burn-in and thinning,
-            columns [eps, L40, fesc10, h, fnoise].
+            columns [L40, fesc10, eps, h, fnoise].
     """
     # Build prior objects once — shared across all n_walkers * steps evaluations
     priors = _build_priors(unscaled_feature_domains)
@@ -260,7 +260,7 @@ def generate_chain(
     rng = np.random.default_rng(seed=1701)
     initial_pos = np.log(np.column_stack([
         priors[key].rvs(size=n_walkers, random_state=rng)
-        for key in ('epsilon', 'L40_xray', 'fesc10', 'h', 'fnoise')
+        for key in ('L40_xray', 'fesc10', 'epsilon', 'h', 'fnoise')
     ]))
 
     # Set eval mode once before sampling — not per-call inside ln_post_vec
