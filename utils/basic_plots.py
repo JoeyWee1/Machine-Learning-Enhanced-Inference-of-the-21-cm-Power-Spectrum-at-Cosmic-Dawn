@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import torch 
 
 def plot_power_spectra(raw_data: dict, idx_min: int = 0, idx_max: int = 8000, interval: int = 100) -> None:
     """
@@ -25,7 +26,7 @@ def plot_power_spectra(raw_data: dict, idx_min: int = 0, idx_max: int = 8000, in
     -------
     >>> plot_power_spectra(raw_data, idx_min=0, idx_max=500, interval=50)
     """
-    plt.figure(figsize=(5, 5))
+    plt.figure(figsize=(5, 5), dpi = 150)
     for i in  range(idx_min, idx_max, interval):
         plt.loglog(raw_data['k_train'][i], raw_data['power_train'][i], label=f'Sim {i+1}')
     plt.xlabel('k-bin')
@@ -65,7 +66,7 @@ def evr_stats(processed: dict) -> None:
     cumulative_explained_variance = np.cumsum(explained_variance_ratio)
 
     # Plot
-    plt.figure(figsize=(6,4))
+    plt.figure(figsize=(6,4), dpi=150)
     plt.yscale('log')
     plt.plot(cumulative_explained_variance, marker='o')
     plt.axhline(0.99, ls='--', c='k', label='99%')
@@ -81,3 +82,84 @@ def evr_stats(processed: dict) -> None:
     for threshold in thresholds:
         n = np.searchsorted(cumulative_explained_variance, threshold) + 1
         print(f"{100 * threshold:.3f}% threshold explained by first {n} components")
+
+def plot_reconstructed_train(
+    processed: dict,
+    n_comp: int,
+    idx: int = 0,
+    plot: bool = False,
+) -> float:
+    """
+    Reconstruct a single training power spectrum from its PCA coefficients
+    and optionally plot the components, reconstruction, and fractional residual.
+
+    Parameters
+    ----------
+    processed : dict
+        Output of preprocess(). Required keys:
+        - 'k_train'                : ndarray of shape (n_k,)
+        - 'power_train'            : ndarray of shape (N, n_k), possibly log-transformed.
+        - 'evecs'                  : ndarray of shape (n_k, n_comp).
+        - 'pca_weights_train_raw'  : ndarray of shape (N, n_comp), unscaled PCA coefficients.
+        - 'pca'                    : fitted PCA object (used for mean correction).
+        - 'log_power'              : bool, whether to exponentiate the reconstruction.
+    n_comp : int
+        Number of PCA components to use in the reconstruction.
+    idx : int, optional
+        Index of the training sample to reconstruct. Default 0.
+    plot : bool, optional
+        If True, produces a three-panel figure showing component contributions,
+        the reconstructed spectrum, and the fractional residual. Default False.
+
+    Returns
+    -------
+    float
+        Mean fractional residual (%) between the original and reconstructed
+        power spectrum, averaged over all k-modes.
+
+    Example
+    -------
+    >>> residual = plot_reconstructed_train(processed, n_comp=10, idx=0, plot=True)
+    >>> print(f"Mean residual: {residual:.3f}%")
+    """
+    k  = processed["k_train"][0]          # shape (n_k,)
+    power_true = processed["power_train"][idx]  # shape (n_k,)
+
+    evecs  = processed["evecs"][:, :n_comp]                        # (n_k, n_comp)
+    coeffs = processed["pca_weights_train_raw"][idx, :n_comp] # (n_comp,)
+
+    # Reconstruct: project back and add PCA mean
+    reconstructed = coeffs @ evecs.T + processed["pca"].mean_ # (n_k,)
+    reconstructed = np.exp(reconstructed) if processed["log_power"] else reconstructed
+
+    frac_residual = 100.0 * np.abs(torch.tensor(power_true) - reconstructed) / np.abs(power_true)
+
+    if plot:
+        fig, axes = plt.subplots(1, 3, figsize=(12, 3), dpi = 150)
+
+        # Panel 1 — individual component contributions
+        for i in range(n_comp):
+            axes[0].semilogx(k, coeffs[i] * evecs[:, i], label=f"PC {i + 1}")
+        axes[0].set_xlabel(r"$k$  [Mpc$^{-1}$]")
+        axes[0].set_ylabel("Contribution")
+        axes[0].set_title("PCA component contributions")
+        axes[0].legend(fontsize=7)
+
+        # Panel 2 — original vs reconstructed spectrum
+        axes[1].loglog(k, power_true,    label="Original")
+        axes[1].loglog(k, reconstructed, label=f"PCA ({n_comp} components)", ls="--")
+        axes[1].set_xlabel(r"$k$  [Mpc$^{-1}$]")
+        axes[1].set_ylabel(r"$\Delta^2(k)$  [mK$^2$]")
+        axes[1].set_title("Reconstructed spectrum")
+        axes[1].legend()
+
+        # Panel 3 — fractional residual
+        axes[2].semilogx(k, frac_residual)
+        axes[2].set_xlabel(r"$k$  [Mpc$^{-1}$]")
+        axes[2].set_ylabel("Fractional residual (%)")
+        axes[2].set_title("Fractional residual")
+
+        plt.tight_layout()
+        plt.show()
+
+    return float(frac_residual.mean())

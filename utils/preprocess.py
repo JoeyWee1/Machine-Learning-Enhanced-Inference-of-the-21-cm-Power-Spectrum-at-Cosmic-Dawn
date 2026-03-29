@@ -17,6 +17,7 @@ def preprocess(data: dict, n_comp: int, log_power: bool = False) -> dict:
         Raw simulation data with keys:
         - 'raw_params_train/val/test' : ndarray of shape (N, n_params)
         - 'power_train/val/test'      : ndarray of shape (N, n_k)
+        - 'k_train/val/test'          : ndarray of shape (n_k,)
     n_comp : int
         Number of PCA components to retain.
     log_power : bool, optional
@@ -26,34 +27,58 @@ def preprocess(data: dict, n_comp: int, log_power: bool = False) -> dict:
     Returns
     -------
     dict
-        - 'params_scaler'                  : StandardScaler fitted on training parameters.
-        - 'weight_scaler'                  : StandardScaler fitted on training PCA coefficients.
-        - 'pca'                            : PCA object fitted on training power spectra.
-        - 'evecs'                          : ndarray of shape (n_k, n_comp), PCA eigenvectors.
-        - 'explained_variance_ratio'       : ndarray of shape (n_comp,).
-        - 'log_power'                      : bool, whether log was applied to power spectra.
-        - 'params_train/val/test_scaled'   : ndarray of shape (N, n_params), scaled parameters.
-        - 'pca_weights_train/val/test_scaled' : Tensor of shape (N, n_comp), scaled PCA coefficients.
+        Scalers and PCA:
+        - 'params_scaler'                     : StandardScaler fitted on training parameters.
+        - 'weight_scaler'                     : StandardScaler fitted on training PCA coefficients.
+        - 'pca'                               : PCA object fitted on training power spectra.
+        - 'evecs'                             : ndarray of shape (n_k, n_comp), PCA eigenvectors.
+        - 'explained_variance_ratio'          : ndarray of shape (n_comp,).
+        - 'log_power'                         : bool, whether log was applied to power spectra.
+
+        Power spectra (not log transformed):
+        - 'power_train/val/test'              : ndarray of shape (N, n_k).
+        - 'k_train/val/test'                  : ndarray of shape (n_k,).
+
+        Parameters:
+        - 'params_train/val/test_raw'         : ndarray of shape (N, n_params), unscaled.
+        - 'params_train/val/test_scaled'      : ndarray of shape (N, n_params), standardized.
+
+        PCA coefficients:
+        - 'pca_weights_train/val/test_raw'    : ndarray of shape (N, n_comp), unscaled.
+        - 'pca_weights_train/val/test_scaled' : Tensor of shape (N, n_comp), standardized.
 
     Raises
     ------
     ValueError
         If log_power=True and any power spectrum value is non-positive.
+
+    Notes
+    -----
+    The preprocessing pipeline is:
+        1. (Optional) Apply log to all power spectra.
+        2. Fit StandardScaler on training parameters; apply to all splits.
+        3. Fit PCA on training power spectra; project all splits onto n_comp components.
+        4. Fit StandardScaler on training PCA coefficients; apply to all splits.
     """
     # Extract powers
-    power_train = data["power_train"]
-    power_val   = data["power_val"]
-    power_test  = data["power_test"]
+    power_train_raw = data["power_train"]
+    power_val_raw   = data["power_val"]
+    power_test_raw  = data["power_test"]
+
 
     # Are we working in log power space
     if log_power:
-        if np.any(power_train <= 0) or np.any(power_val <= 0) or np.any(power_test <= 0):
+        if np.any(power_train_raw <= 0) or np.any(power_val_raw <= 0) or np.any(power_test_raw <= 0):
             raise ValueError(
                 "log_power=True requires all power spectrum values to be strictly positive."
             )
-        power_train = np.log(power_train) # Take the logs of the powers
-        power_val   = np.log(power_val)
-        power_test  = np.log(power_test)
+        power_train = np.log(power_train_raw) # Take the logs of the powers
+        power_val   = np.log(power_val_raw)
+        power_test  = np.log(power_test_raw)
+    else:
+        power_train = power_train_raw
+        power_val   = power_val_raw
+        power_test  = power_test_raw
 
     # Standardize the physical parameters
     params_scaler = StandardScaler().fit(data["raw_params_train"])
@@ -83,12 +108,24 @@ def preprocess(data: dict, n_comp: int, log_power: bool = False) -> dict:
         "evecs": evecs,
         "explained_variance_ratio": pca.explained_variance_ratio_,
         "log_power": log_power,
+        "power_train": power_train_raw, # Return the (possibly log) power spectra for later use in plotting
+        "power_val": power_val_raw,
+        "power_test": power_test_raw, 
+        "params_train_raw": data["raw_params_train"],
+        "params_val_raw": data["raw_params_val"],
+        "params_test_raw": data["raw_params_test"],
         "params_train_scaled": params_train_scaled,
         "params_val_scaled": params_val_scaled,
         "params_test_scaled": params_test_scaled,
+        "pca_weights_train_raw": pca_weights_train_raw,
+        "pca_weights_val_raw": pca_weights_val_raw,
+        "pca_weights_test_raw": pca_weights_test_raw,
         "pca_weights_train_scaled": pca_weights_train_scaled,
         "pca_weights_val_scaled": pca_weights_val_scaled,
         "pca_weights_test_scaled": pca_weights_test_scaled,
+        "k_train": data["k_train"],
+        "k_val": data["k_val"],
+        "k_test": data["k_test"],
     }
 
 
