@@ -44,9 +44,9 @@ def make_emulator_ln_likelihood(model, p_obs: np.ndarray, processed: dict):
 
         with torch.no_grad():
             # Model input order: [L40, fesc10, eps, h]
-            params_tensor = torch.tensor(
-                [L40, fesc10, eps, h], dtype=torch.float32
-            )
+            params_raw = np.array([[L40, fesc10, eps, h]])
+            params_standardised = processed["params_scaler"].transform(params_raw)
+            params_tensor = torch.tensor(params_standardised, dtype=torch.float32)
             pred_scaled = model(params_tensor).cpu().numpy().reshape(1, -1)
 
         pred_raw = processed["weight_scaler"].inverse_transform(pred_scaled)
