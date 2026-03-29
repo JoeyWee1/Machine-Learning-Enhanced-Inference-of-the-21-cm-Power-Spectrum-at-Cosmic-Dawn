@@ -17,7 +17,7 @@ import optuna
 import torch
 from torch import optim
 
-from optuna_optimize import (
+from optuna.optuna_optimize_emulator import (
     Emulator,
     evaluate_model,
     load_splits,

@@ -8,12 +8,11 @@ from pathlib import Path
 import torch
 from torch import optim
 
-from helpers.set_seed import set_seed
-from helpers.load_files import load_splits
-from helpers.preprocess import preprocess
-from helpers.emulator import Emulator
-from helpers.train_model import train_model
-from helpers.evaluate_model import evaluate_model
+from utils.general import set_seed, load_splits
+from utils.preprocess import preprocess
+from utils.emulator.emulator import Emulator
+from utils.emulator.train_emulator import train_emulator
+from utils.emulator.evaluate_emulator import evaluate_emulator
 
 try:
     import optuna
@@ -23,10 +22,10 @@ except ImportError as e:
 
 def main() -> None:
     """
-    Entry point for Optuna hyperparameter search over the 21-cm power spectrum emulator.
+    Optuna hyperparameter search over the 21-cm power spectrum emulator.
 
     Parses command-line arguments, loads and preprocesses simulation data, runs an
-    Optuna TPE study to minimise validation loss, retrains the best model to convergence,
+    Optuna study to minimise validation loss, retrains the best model to convergence,
     evaluates it on the test set, and saves the model weights, preprocessing artefacts,
     and a JSON summary to disk.
 
@@ -40,8 +39,7 @@ def main() -> None:
         Optuna study name. Default: "emulator_optuna".
     --storage : str or None
         Optuna storage URL (e.g. sqlite:///outputs/study.db). If None, a default
-        SQLite path is constructed under --output-dir. A 60-second timeout is appended
-        automatically to reduce database-lock errors.
+        SQLite path is constructed under --output-dir with a 60-second timeout.
     --n-trials : int
         Number of Optuna trials to run. Default: 50.
     --timeout : int or None
@@ -59,20 +57,11 @@ def main() -> None:
     --device : {"cpu", "cuda"}
         Compute device. Default: "cuda".
     --log-power : flag
-        If set, applies log transform to power spectra before PCA. Requires all
-        power values to be strictly positive.
+        If set, applies log transform to power spectra before PCA.
     --loss-mode : {"pca", "reconstruction"}
         Loss space for training:
-        - "pca"            : MSE on standardised PCA coefficients (fast, default).
-        - "reconstruction" : MSE on reconstructed power spectra (physically meaningful).
-
-    Notes
-    -----
-    The SQLite storage URL automatically has ``?timeout=60`` appended to reduce
-    ``database is locked`` errors during long sequential runs.
-
-    Intermediate values are reported to Optuna every 10 epochs (not every epoch)
-    to further reduce SQLite write pressure.
+        - "pca"            : MSE on standardised PCA coefficients.
+        - "reconstruction" : MSE on reconstructed power spectra.
     """
     parser = argparse.ArgumentParser(
         description="Optuna hyperparameter search for the 21-cm power spectrum emulator."
@@ -99,7 +88,7 @@ def main() -> None:
     parser.add_argument("--loss-mode",  type=str,  default="pca",
                         choices=["pca", "reconstruction"],
                         help=(
-                            "pca: MSE on normalised PCA weights (default, fast). "
+                            "pca: MSE on normalised PCA weights. "
                             "reconstruction: MSE on reconstructed power spectra."
                         ))
     args = parser.parse_args()
@@ -112,7 +101,7 @@ def main() -> None:
         raise RuntimeError("--device cuda requested but CUDA is not available.")
 
     device = "cuda" if args.device == "cuda" else "cpu"
-    print(f"Using device:  {device}",       flush=True)
+    print(f"Using device:  {device}",        flush=True)
     print(f"Loss mode:     {args.loss_mode}", flush=True)
     print(f"Log power:     {args.log_power}", flush=True)
 
@@ -120,8 +109,7 @@ def main() -> None:
     raw_data  = load_splits(args.data_dir)
     processed = preprocess(raw_data, n_comp=args.n_comp, log_power=args.log_power)
 
-    for key in ["x_train", "y_train", "x_val", "y_val", "x_test", "y_test"]:
-        processed[key] = processed[key].to(device)
+    input_dim = processed["params_train_scaled"].shape[1]
 
     # ── Optuna objective ───────────────────────────────────────────────────────
     def objective(trial: optuna.Trial) -> float:
@@ -133,7 +121,7 @@ def main() -> None:
         weight_decay = trial.suggest_float("weight_decay", 1e-6, 1e-2, log=True)
 
         model = Emulator(
-            input_dim=processed["x_train"].shape[1],
+            input_dim=input_dim,
             output_dim=args.n_comp,
             hidden_dim=hidden_dim,
             num_layers=num_layers,
@@ -141,12 +129,8 @@ def main() -> None:
 
         optimiser = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 
-        best_valid_loss, best_train_loss, best_epoch, _ = train_model(
+        best_valid_loss, best_train_loss, best_epoch, _ = train_emulator(
             model=model,
-            x_train=processed["x_train"],
-            y_train=processed["y_train"],
-            x_val=processed["x_val"],
-            y_val=processed["y_val"],
             optimiser=optimiser,
             processed=processed,
             epochs=args.epochs,
@@ -168,7 +152,6 @@ def main() -> None:
         db_path = (args.output_dir / f"{args.study_name}.db").resolve()
         storage = f"sqlite:///{db_path}?timeout=60"
     else:
-        # Append timeout if not already present
         storage = args.storage if "timeout=" in args.storage else args.storage + "?timeout=60"
 
     sampler = optuna.samplers.TPESampler(seed=args.seed)
@@ -196,16 +179,16 @@ def main() -> None:
     )
 
     # ── Report best trial ──────────────────────────────────────────────────────
-    print("Best trial:",                                                       flush=True)
-    print(f"  value:      {study.best_trial.value}",                          flush=True)
-    print(f"  params:     {study.best_trial.params}",                         flush=True)
-    print(f"  best_epoch: {study.best_trial.user_attrs.get('best_epoch')}",   flush=True)
+    print("Best trial:",                                                          flush=True)
+    print(f"  value:      {study.best_trial.value}",                             flush=True)
+    print(f"  params:     {study.best_trial.params}",                            flush=True)
+    print(f"  best_epoch: {study.best_trial.user_attrs.get('best_epoch')}",      flush=True)
     print(f"  train_loss: {study.best_trial.user_attrs.get('best_train_loss')}", flush=True)
 
     # ── Retrain best model to full convergence ────────────────────────────────
-    best_params = study.best_trial.params
-    best_model  = Emulator(
-        input_dim=processed["x_train"].shape[1],
+    best_params    = study.best_trial.params
+    best_model     = Emulator(
+        input_dim=input_dim,
         output_dim=args.n_comp,
         hidden_dim=best_params["hidden_dim"],
         num_layers=best_params["num_layers"],
@@ -216,12 +199,8 @@ def main() -> None:
         weight_decay=best_params["weight_decay"],
     )
 
-    best_valid_loss, best_train_loss, best_epoch, best_model = train_model(
+    best_valid_loss, best_train_loss, best_epoch, best_model = train_emulator(
         model=best_model,
-        x_train=processed["x_train"],
-        y_train=processed["y_train"],
-        x_val=processed["x_val"],
-        y_val=processed["y_val"],
         optimiser=best_optimizer,
         processed=processed,
         epochs=max(args.epochs, 10000),
@@ -234,7 +213,7 @@ def main() -> None:
     )
 
     # ── Evaluate ──────────────────────────────────────────────────────────────
-    metrics = evaluate_model(best_model.to(device), processed, raw_data, device=device)
+    metrics = evaluate_emulator(best_model.to(device), processed, device=device)
 
     print(f"Test loss (normalised space): {metrics['test_loss_normalised_space']:.6f}", flush=True)
     print(f"Mean percentage error:        {metrics['mean_percentage_error']:.3f}%",     flush=True)
@@ -257,7 +236,7 @@ def main() -> None:
             "model_state_dict": best_model.state_dict(),
             "best_params":      best_params,
             "n_comp":           args.n_comp,
-            "input_dim":        processed["x_train"].shape[1],
+            "input_dim":        input_dim,
             "output_dim":       args.n_comp,
             "loss_mode":        args.loss_mode,
             "log_power":        args.log_power,
@@ -271,12 +250,12 @@ def main() -> None:
     with open(preprocess_path, "wb") as f:
         pickle.dump(
             {
-                "params_scaler": processed["params_scaler"],
-                "weight_scaler": processed["weight_scaler"],
-                "pca":           processed["pca"],
-                "W":             processed["W"],
-                "eig_vals":      processed["eig_vals"],
-                "log_power":     processed["log_power"],
+                "params_scaler":            processed["params_scaler"],
+                "weight_scaler":            processed["weight_scaler"],
+                "pca":                      processed["pca"],
+                "evecs":                    processed["evecs"],
+                "explained_variance_ratio": processed["explained_variance_ratio"],
+                "log_power":                processed["log_power"],
             },
             f,
         )
@@ -284,24 +263,24 @@ def main() -> None:
     with open(summary_path, "w") as f:
         json.dump(
             {
-                "study_name":                 args.study_name,
-                "storage":                    storage,
-                "loss_mode":                  args.loss_mode,
-                "log_power":                  args.log_power,
-                "n_trials_total":             len(study.trials),
-                "best_trial_value":           study.best_trial.value,
-                "best_params":                best_params,
-                "best_epoch":                 best_epoch,
-                "best_valid_loss":            best_valid_loss,
-                "best_train_loss":            best_train_loss,
+                "study_name":                args.study_name,
+                "storage":                   storage,
+                "loss_mode":                 args.loss_mode,
+                "log_power":                 args.log_power,
+                "n_trials_total":            len(study.trials),
+                "best_trial_value":          study.best_trial.value,
+                "best_params":               best_params,
+                "best_epoch":                best_epoch,
+                "best_valid_loss":           best_valid_loss,
+                "best_train_loss":           best_train_loss,
                 "test_loss_normalised_space": metrics["test_loss_normalised_space"],
-                "mean_percentage_error":      metrics["mean_percentage_error"],
-                "p95_percentage_error":       metrics["p95_percentage_error"],
-                "seed":                       args.seed,
-                "data_dir":                   str(args.data_dir),
-                "train_size":                 int(len(raw_data["train_files"])),
-                "val_size":                   int(len(raw_data["val_files"])),
-                "test_size":                  int(len(raw_data["test_files"])),
+                "mean_percentage_error":     metrics["mean_percentage_error"],
+                "p95_percentage_error":      metrics["p95_percentage_error"],
+                "seed":                      args.seed,
+                "data_dir":                  str(args.data_dir),
+                "train_size":                int(len(raw_data["power_train"])),
+                "val_size":                  int(len(raw_data["power_val"])),
+                "test_size":                 int(len(raw_data["power_test"])),
             },
             f,
             indent=2,
