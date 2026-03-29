@@ -2,13 +2,40 @@ import numpy as np
 import corner
 import matplotlib.pyplot as plt
 
-def plot_corner(unthinned_chain: np.ndarray, diagnostic: dict, df: int = 10):
+def plot_corner(unthinned_chain: np.ndarray, diagnostic: dict, df: int = 10) -> None:
+    """
+    Plot a corner plot of the posterior samples from an emcee chain.
+
+    Discards burn-in samples based on the autocorrelation time before
+    flattening the chain and plotting marginal and joint posterior distributions
+    for the 5 model parameters.
+
+    Parameters
+    ----------
+    unthinned_chain : ndarray of shape (n_steps, n_walkers, n_params)
+        Raw emcee chain as returned by sampler.get_chain().
+    diagnostic : dict
+        Sampling diagnostics. Required keys:
+        - 'tau' : float, estimated autocorrelation time used to determine burn-in.
+    df : int, optional
+        Burn-in is set to df * tau steps. Default 10.
+
+    Returns
+    -------
+    None
+        Displays the corner plot inline.
+
+    Notes
+    -----
+    Only the first 5 parameters are plotted: L40_xray, fesc10, epsilon, h, fnoise.
+    Quantiles shown are 16th, 50th, and 84th percentiles (i.e. median ± 1σ).
+    """
     tau = diagnostic["tau"]
     discard = int(df * tau)   # Safe number to discard
     flat = unthinned_chain[discard:, :, :5].reshape(-1, 5)
     
     labels  = ["L40_xray", "fesc10", "epsilon", "h", "fnoise"]
-    
+
     plt.figure(figsize=(10, 10), dpi=150)
     corner.corner(
         flat,

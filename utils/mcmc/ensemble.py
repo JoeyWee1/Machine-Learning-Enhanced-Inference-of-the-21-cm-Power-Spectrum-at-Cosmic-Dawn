@@ -103,7 +103,7 @@ def ln_post_emulator(thetas, model, p_obs, processed, priors):
     p_obs : np.ndarray of shape (54,)
         Observed power spectrum.
     processed : dict
-        Preprocessing artefacts (weight_scaler, pca, log_power).
+        Preprocessing artefacts (params_scaler, weight_scaler, pca, log_power).
     priors : dict
         Pre-built loguniform objects from _build_priors().
 
@@ -132,9 +132,10 @@ def ln_post_emulator(thetas, model, p_obs, processed, priors):
     valid_thetas = thetas[valid]
     # Model input order: [L40, fesc10, eps, h] — columns [0, 1, 2, 3] of theta
     params_batch = valid_thetas[:, :4]
+    params_batch_scaled = processed["params_scaler"].transform(params_batch)
 
     with torch.no_grad():
-        params_tensor = torch.tensor(params_batch, dtype=torch.float32)
+        params_tensor = torch.tensor(params_batch_scaled, dtype=torch.float32)
         pred_scaled = model(params_tensor).cpu().numpy()
 
     pred_raw = processed["weight_scaler"].inverse_transform(pred_scaled)
