@@ -5,6 +5,9 @@ import numpy as np
 import torch
 from utils.mcmc.ensemble import ln_likelihood_emulator
 
+
+# Nifty prior stuff that handles the log problem
+
 def make_prior_transform(domains: dict):
     """
     Return a function mapping u ~ Uniform[0,1]^5 to physical parameters
@@ -30,7 +33,7 @@ def make_prior_transform(domains: dict):
 
     return prior_transform
 
-
+# Emulator
 
 def make_emulator_ln_likelihood(model, p_obs: np.ndarray, processed: dict):
     """
@@ -58,6 +61,28 @@ def make_emulator_ln_likelihood(model, p_obs: np.ndarray, processed: dict):
 
     return log_likelihood
 
+# NRE
+
+def make_nre_ln_likelihood(model, p_obs: np.ndarray, nre_data: dict):
+    scaler = nre_data['scaler']
+    def log_likelihood(theta):
+        theta = np.atleast_2d(theta) # Force 2d    
+        p_obs_log = np.log(p_obs)  # We trained on log so this must be log   (54,)
+        p_obs_tiled = np.tile(p_obs_log, (theta.shape[0], 1)) # (N, 54) N param proposals to evaluate
+    
+        x_raw = np.concatenate([p_obs_tiled, theta], axis=1)           # (N, 59)
+        x_scaled = scaler.transform(x_raw)                              # (N, 59)
+        x_tensor = torch.tensor(x_scaled, dtype=torch.float32)          # (N, 59)
+
+        with torch.no_grad():
+            lnr = model(x_tensor).squeeze(-1)                           # (N,)
+
+        return lnr.cpu().numpy().squeeze()                              # scalar or (N,)
+    return log_likelihood
+
+
+# Sample!! alas ;-;
+
 def build_sampler(
     model,
     processed: dict,
@@ -65,6 +90,7 @@ def build_sampler(
     domains: dict,
     nlive: int = 1500,
     print_progress: bool = True,
+    ln_likelihood_fn=None,
 ):
     """
     Run dynesty DynamicNestedSampler and return the results object.
@@ -93,7 +119,7 @@ def build_sampler(
     model.eval()
 
     prior_transform = make_prior_transform(domains)
-    log_likelihood  = make_emulator_ln_likelihood(model, p_obs, processed)
+    log_likelihood  = ln_likelihood_fn(model, p_obs, processed)
 
     sampler = dynesty.DynamicNestedSampler(
         log_likelihood,

@@ -272,12 +272,18 @@ def generate_chain(
     sampler.run_mcmc(initial_pos, steps, progress=True)
 
     mean_frac = sampler.acceptance_fraction.mean()
-    taus = sampler.get_autocorr_time()
-    mean_tau = np.mean(taus)
-    tau = int(max(taus))
+    try:
+        taus = sampler.get_autocorr_time()
+        mean_tau = float(np.mean(taus))
+        tau = int(max(taus))
+        print(f"Mean autocorrelation time: {mean_tau:.2f} steps")
+    except Exception:
+        print("Warning: chain too short to estimate autocorrelation time. Using tau=1 (no thinning).")
+        taus = None
+        mean_tau = None
+        tau = 1
 
     print(f"Mean acceptance fraction: {mean_frac:.3f}")
-    print(f"Mean autocorrelation time: {mean_tau:.2f} steps")
 
     thinned_samples = sampler.get_chain(discard=discard, thin=tf * tau, flat=False)
     unthinned_samples = sampler.get_chain(discard=discard, flat=False)
