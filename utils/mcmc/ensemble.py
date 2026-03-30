@@ -3,6 +3,8 @@ import numpy as np
 from scipy.stats import loguniform
 import torch
 
+# Priors
+
 def _build_priors(unscaled_feature_domains: dict) -> dict:
     """
     Construct loguniform prior objects once from feature domains.
@@ -60,6 +62,8 @@ def ln_uniform_prior(L40, fesc10, eps, h, fnoise, priors):
         + priors['fesc10'].logpdf(fesc10)
         + priors['fnoise'].logpdf(fnoise)
     )
+
+# Emulator likelihood and log-post
 
 def ln_likelihood_emulator(fnoise, p_model, p_obs):
     """
@@ -191,6 +195,45 @@ def ln_post_log_emulator(phis, model, p_obs, processed, priors): #wrap function 
     finite = np.isfinite(log_probs)
     log_probs[finite] += jacobian[finite]
     return log_probs  
+
+# NRE likelihood and log-post
+def ln_post_nre(thetas, model, p_obs, nre_data, priors): # vectorised version
+    n = len(thetas) # thetas is shape (n, 5)
+    results = np.full(n, -np.inf)
+    log_priors = np.zeros(n)
+    valid = np.ones(n, dtype=bool)
+
+    for i, (L40, fesc10, eps, h, fnoise) in enumerate(thetas):
+        lnPi = ln_uniform_prior(L40=L40, fesc10=fesc10, eps=eps,
+                                h=h, fnoise=fnoise, priors=priors)
+        if not np.isfinite(lnPi):
+            valid[i] = False
+        else:
+            log_priors[i] = lnPi
+
+    if not np.any(valid):
+        return results
+
+    valid_thetas = thetas[valid]                                          # (m, 5)
+    log_p_obs_tiled = np.tile(np.log(p_obs), (len(valid_thetas), 1))    # (m, 54)
+    x_obs_raw = np.concatenate([log_p_obs_tiled, valid_thetas], axis=1) # (m, 59)
+    x_obs = torch.tensor(nre_data["scaler"].transform(x_obs_raw), dtype=torch.float32)
+
+    with torch.no_grad():
+        lnr = model(x_obs).squeeze(1).cpu().numpy()                      # (m,)
+
+    results[np.where(valid)[0]] = lnr + log_priors[valid]
+    return results
+
+def ln_post_log_nre(phis, model, p_obs, nre_data, priors):
+    thetas = np.exp(phis)
+    log_probs = ln_post_nre(thetas, model, p_obs, nre_data, priors)
+    jacobian = phis.sum(axis=1)
+    finite = np.isfinite(log_probs)
+    log_probs[finite] += jacobian[finite]
+    return log_probs
+
+# Generate chain
 
 def generate_chain(
         ln_post_log: callable,
