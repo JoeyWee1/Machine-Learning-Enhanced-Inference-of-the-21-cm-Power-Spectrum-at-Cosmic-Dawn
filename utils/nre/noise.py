@@ -1,4 +1,5 @@
 import numpy as np
+from utils.general import set_seed
 
 def noisify(pmodel, theta4, n_fnoise): # pmodel is just the mean
     n_models = pmodel.shape[0] # shape (n_models ,54)
@@ -103,6 +104,7 @@ def noisify(
 
         return pnoisy_flat, theta_noisy
 
+    set_seed()
     pnoisy_train, theta_train = _noisify_split(pmodel_train, theta4_train)
     pnoisy_val,   theta_val   = _noisify_split(pmodel_val,   theta4_val)
     pnoisy_test,  theta_test  = _noisify_split(pmodel_test,  theta4_test)

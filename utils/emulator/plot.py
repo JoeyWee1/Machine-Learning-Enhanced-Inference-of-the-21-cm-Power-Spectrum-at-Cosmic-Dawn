@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plot_pca_train_weights(processed: dict, n_comp: int) -> dict:
+def plot_pca_train_params(processed: dict, n_comp: int) -> dict:
     """
     Plot parameter distributions before and after standardisation and return feature domains.
 

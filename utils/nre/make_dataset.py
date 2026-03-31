@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from utils.general import set_seed
 
 def make_nre_datasets(noisy_data: dict, processed: dict,plot: bool =False):
     pnoisy_train = noisy_data["pnoisy_train"]
@@ -55,6 +56,7 @@ def make_nre_datasets(noisy_data: dict, processed: dict,plot: bool =False):
             "labels":labels_nre
         }
         return nre_dataset
+    set_seed()
     nre_train = _make_nre_dataset(pnoisy_train, theta5_train, plot=plot)
     nre_val = _make_nre_dataset(pnoisy_val, theta5_val, plot=False)
     nre_test = _make_nre_dataset(pnoisy_test, theta5_test, plot=False)
