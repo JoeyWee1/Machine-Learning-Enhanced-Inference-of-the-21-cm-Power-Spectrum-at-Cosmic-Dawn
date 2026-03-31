@@ -34,7 +34,7 @@ def _build_priors(unscaled_feature_domains: dict) -> dict:
         'L40_xray': make('L40_xray'),
         'fesc10':   make('fesc10'),
         'h':        make('h'),
-        'fnoise':   loguniform(a=1e-3, b=1e1),
+        'fnoise':   loguniform(a=1e-3, b=1e0),
     }
 
 def ln_uniform_prior(L40, fesc10, eps, h, fnoise, priors):

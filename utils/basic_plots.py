@@ -68,7 +68,7 @@ def evr_stats(processed: dict) -> None:
     # Plot
     plt.figure(figsize=(6,4), dpi=150)
     plt.yscale('log')
-    plt.plot(cumulative_explained_variance, marker='o')
+    plt.plot(np.arange(1, len(cumulative_explained_variance) + 1), cumulative_explained_variance, marker='o')
     plt.axhline(0.99, ls='--', c='k', label='99%')
     plt.axhline(0.999, ls=':', c='k', label='99.9%')
     plt.xlabel("Modes included")

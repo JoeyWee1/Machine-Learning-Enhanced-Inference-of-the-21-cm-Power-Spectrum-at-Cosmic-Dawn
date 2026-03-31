@@ -62,7 +62,7 @@ def make_prior_transform(domains: dict):
         (0.5 * domains['fesc10'][0],   1.5 * domains['fesc10'][1]),
         (0.5 * domains['epsilon'][0],  1.5 * domains['epsilon'][1]),
         (0.5 * domains['h'][0],        1.5 * domains['h'][1]),
-        (1e-3, 1e1),   # fnoise
+        (1e-3, 1e0),   # fnoise
     ]
     log_lo = np.array([np.log(lo) for lo, _ in bounds])
     log_hi = np.array([np.log(hi) for _, hi in bounds])
