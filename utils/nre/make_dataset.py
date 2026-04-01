@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from utils.general import set_seed
 
-def make_nre_datasets(noisy_data: dict, processed: dict,plot: bool =False):
+def make_nre_datasets(noisy_data: dict, processed: dict,plot: bool =False, savefig: bool = False) -> dict:
     pnoisy_train = noisy_data["pnoisy_train"]
     pnoisy_val = noisy_data["pnoisy_val"]
     pnoisy_test = noisy_data["pnoisy_test"]
@@ -13,7 +13,7 @@ def make_nre_datasets(noisy_data: dict, processed: dict,plot: bool =False):
     
     k_train = processed["k_train"]  
 
-    def _make_nre_dataset(pnoisy, theta5, plot=plot):
+    def _make_nre_dataset(pnoisy, theta5, plot=plot, savefig=savefig):
         set_seed()
         pnoisy_j = pnoisy #(n_models, 54)
         theta5_j = theta5 #(n_models, 5)
@@ -29,11 +29,9 @@ def make_nre_datasets(noisy_data: dict, processed: dict,plot: bool =False):
         labels_nre = np.concatenate([np.ones(len(pnoisy)), np.zeros(len(pnoisy))]) #(2*n_models)
 
         if plot == True:
-            fig, ax = plt.subplots(1,5,figsize=(25,5))
             idx_k = np.argmin(np.abs(k_train - 0.1))
-            pnoisy_slice = pnoisy_nre[:, idx_k] #(2*n_models,1)
-            
-            # each panel is power vs one of our params
+            pnoisy_slice = pnoisy_nre[:, idx_k]
+
             labels = [
                 r"$L_{40}^{\text{X-ray}}$",
                 r"$f_{\text{esc}}^{10}$",
@@ -41,16 +39,21 @@ def make_nre_datasets(noisy_data: dict, processed: dict,plot: bool =False):
                 r"$h$",
                 r"$f_{\text{noise}}$",
             ]
+            savelabels = ["L40_xray", "fesc10", "epsilon", "h", "fnoise"]
+
+             # Plotting
             for i, label in enumerate(labels):
-                theta5_slice = theta5_nre[:,i]
-                ax[i].scatter(theta5_slice[:len(pnoisy)], pnoisy_slice[:len(pnoisy)], color = 'blue', label = "Joint Distribution", s=1, alpha=0.3)
-                ax[i].scatter(theta5_slice[len(pnoisy):], pnoisy_slice[len(pnoisy):], color = 'red', label = "Disjoint Distribution", s=1, alpha=0.3)
-                ax[i].legend()
-                ax[i].set_title(f"{label} vs $P_{{noisy}}$ at k = 0.1")
-                ax[i].set_xlabel(label)
-                ax[i].set_ylabel("$P_{{noisy}}$")
-            fig.tight_layout()
-            fig.show()
+                theta5_slice = theta5_nre[:, i]
+                fig, ax = plt.subplots(figsize=(5, 4), dpi=150)
+                ax.scatter(theta5_slice[:len(pnoisy)], pnoisy_slice[:len(pnoisy)], color='blue', label="Joint", s=1, alpha=0.3)
+                ax.scatter(theta5_slice[len(pnoisy):], pnoisy_slice[len(pnoisy):], color='red',  label="Disjoint", s=1, alpha=0.3)
+                ax.set_xlabel(label)
+                ax.set_ylabel(r"$P_{\rm noisy}(k=0.1)$")
+                ax.legend()
+                fig.tight_layout()
+                if savefig:
+                    fig.savefig(f"figs/shuffle_{savelabels[i]}.png", bbox_inches='tight')
+                plt.show()
         # shuffle final 
         shuffled_idx = np.random.permutation(2*len(pnoisy))
         pnoisy_nre =pnoisy_nre[shuffled_idx] 
@@ -64,9 +67,9 @@ def make_nre_datasets(noisy_data: dict, processed: dict,plot: bool =False):
         }
         return nre_dataset
     set_seed()
-    nre_train = _make_nre_dataset(pnoisy_train, theta5_train, plot=plot)
-    nre_val = _make_nre_dataset(pnoisy_val, theta5_val, plot=False)
-    nre_test = _make_nre_dataset(pnoisy_test, theta5_test, plot=False)
+    nre_train = _make_nre_dataset(pnoisy_train, theta5_train, plot=plot, savefig=savefig)
+    nre_val = _make_nre_dataset(pnoisy_val, theta5_val, plot=False, savefig=False)
+    nre_test = _make_nre_dataset(pnoisy_test, theta5_test, plot=False, savefig=False)
 
     return {
         "nre_train": nre_train,

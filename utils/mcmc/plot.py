@@ -3,7 +3,7 @@ import corner
 import matplotlib.pyplot as plt
 from dynesty.utils import resample_equal
 
-def plot_emcee_corner(unthinned_chain: np.ndarray, diagnostic: dict, df: int = 10) -> None:
+def plot_emcee_corner(unthinned_chain: np.ndarray, diagnostic: dict, df: int = 10, savefig: str = None) -> None:
     """
     Plot a corner plot of the posterior samples from an emcee chain.
 
@@ -20,6 +20,8 @@ def plot_emcee_corner(unthinned_chain: np.ndarray, diagnostic: dict, df: int = 1
         - 'tau' : float, estimated autocorrelation time used to determine burn-in.
     df : int, optional
         Burn-in is set to df * tau steps. Default 10.
+    savefig : str, optional
+        If provided, saves the figure to this filename instead of displaying it. Default None.
 
     Returns
     -------
@@ -49,10 +51,13 @@ def plot_emcee_corner(unthinned_chain: np.ndarray, diagnostic: dict, df: int = 1
         labels=labels,
         show_titles=True,
         quantiles=[0.16, 0.5, 0.84],
+        title_fmt=".3f",
     )
+    if savefig:
+        plt.savefig(savefig, bbox_inches='tight')
     plt.show()
 
-def plot_nested_corner(results) -> np.ndarray:
+def plot_nested_corner(results, savefig: str = None) -> np.ndarray:
     """
     Plot a corner plot from dynesty nested sampling results.
 
@@ -68,7 +73,9 @@ def plot_nested_corner(results) -> np.ndarray:
         - 'logwt'    : ndarray of shape (n_samples,), log importance weights.
         - 'logz'     : ndarray of shape (n_samples,), running log evidence estimate.
         - 'samples'  : ndarray of shape (n_samples, n_params), raw samples.
-
+    savefig : str, optional
+        If provided, saves the figure to this filename instead of displaying it. Default None.
+        
     Returns
     -------
     ndarray of shape (n_resampled, 5)
@@ -93,7 +100,11 @@ def plot_nested_corner(results) -> np.ndarray:
         labels=labels,
         show_titles=True,
         quantiles=[0.16, 0.5, 0.84],
+        title_fmt=".3f",
     )
+    fig.set_dpi(150)
 
+    if savefig:
+        plt.savefig(savefig, bbox_inches='tight')
     plt.show()
     return samples

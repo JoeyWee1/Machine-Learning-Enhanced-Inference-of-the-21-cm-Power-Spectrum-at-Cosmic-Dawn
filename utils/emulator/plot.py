@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plot_pca_train_params(processed: dict, n_comp: int) -> dict:
+def plot_pca_train_params(processed: dict, n_comp: int, savefig: str = None) -> dict:
     """
     Plot parameter distributions before and after standardisation and return feature domains.
 
@@ -17,6 +17,8 @@ def plot_pca_train_params(processed: dict, n_comp: int) -> dict:
         - 'params_train_scaled' : ndarray or Tensor of shape (N, 4), standardized parameters.
     n_comp : int
         Number of PCA components (currently unused, reserved for future use).
+    savefig : str, optional
+        If provided, saves the figure to this filename instead of displaying it. Default None.
 
     Returns
     -------
@@ -81,7 +83,7 @@ def plot_pca_train_params(processed: dict, n_comp: int) -> dict:
         ax_u.hist(unscaled_params[:, i], bins=30, alpha=0.7, color="steelblue")
         ax_u.axvline(unscaled_means[i], color="red", linestyle="--", linewidth=1.5,
                      label=f"μ={unscaled_means[i]:.2f}")
-        ax_u.set_title(f"{name}\nUnscaled [{unscaled_ranges[i][1]:.2f}, {unscaled_ranges[i][0]:.2f}]", fontsize=8)
+        ax_u.set_title(f"{name}\nUnscaled [{unscaled_ranges[i][1]:.2f}, {unscaled_ranges[i][0]:.2f}]", fontsize=20)
         ax_u.set_ylabel("Count")
         ax_u.legend(fontsize=8)
 
@@ -89,19 +91,22 @@ def plot_pca_train_params(processed: dict, n_comp: int) -> dict:
         ax_s.hist(scaled_params[:, i], bins=30, alpha=0.7, color="darkorange")
         ax_s.axvline(scaled_means[i], color="red", linestyle="--", linewidth=1.5,
                      label=f"μ={scaled_means[i]:.2f}")
-        ax_s.set_title(f"Scaled [{scaled_ranges[i][1]:.2f}, {scaled_ranges[i][0]:.2f}]", fontsize=8)
+        ax_s.set_title(f"Scaled [{scaled_ranges[i][1]:.2f}, {scaled_ranges[i][0]:.2f}]", fontsize=20)
+
         ax_s.set_xlabel("Value")
         ax_s.set_ylabel("Count")
-        ax_s.legend(fontsize=8)
+        ax_s.legend(fontsize=10)
 
-    fig.suptitle("Parameter distributions before and after StandardScaler", fontsize=13)
+    # fig.suptitle("Parameter distributions before and after StandardScaler", fontsize=13)
     plt.tight_layout()
+    if savefig:
+        plt.savefig(savefig, bbox_inches='tight')
     plt.show()
 
     return unscaled_feature_domains
 
 def plot_emulator_test_reconstructions(model_evaluation_data: dict, processed: dict, 
-                                       square_side: int = 3, seed: int = 1701) -> None:
+                                       square_side: int = 3, seed: int = 1701, savefig: str = None) -> None:
     """
     Plot a grid of true vs emulator-predicted power spectra on the test set.
 
@@ -120,6 +125,11 @@ def plot_emulator_test_reconstructions(model_evaluation_data: dict, processed: d
         - 'k_test'     : ndarray of shape (n_k,), wavenumber array.
     square_side : int, optional
         Side length of the subplot grid, producing square_side² panels. Default 3.
+    seed : int, optional
+        Random seed for reproducible sampling of test spectra. Default 1701.
+    savefig : str, optional
+        If provided, saves the figure to this filename instead of displaying it. Default None.
+
 
     Returns
     -------
@@ -147,19 +157,21 @@ def plot_emulator_test_reconstructions(model_evaluation_data: dict, processed: d
                   color="steelblue", label="True")
         ax.loglog(processed["k_test"][idx], model_evaluation_data["test_pred_spectra"][idx],
                   '--', color="darkorange", label="Predicted")
-        ax.set_xlabel("k-mode index")
-        ax.set_ylabel("Power Spectrum")
+        ax.set_xlabel(r"$k$  [Mpc$^{-1}$]")
+        ax.set_ylabel(r"$\Delta^2(k)$  [mK$^2$]")
         ax.set_title(f"Sample {idx} — MAPE: {model_evaluation_data['mean_test_error_per_sample'][idx]:.2f}%",
                      fontsize=9, pad=4)
         ax.legend(fontsize=6)
 
     # Single legend outside the grid
     handles, labels = axes[0, 0].get_legend_handles_labels()
-    fig.suptitle("True vs Reconstructed Power Spectra", fontsize=13)
+    # fig.suptitle("True vs Reconstructed Power Spectra", fontsize=13)
+    if savefig:
+        plt.savefig(savefig, bbox_inches='tight')
     plt.show()
 
 
-def plot_mape_distribution(model_evaluation_data: dict) -> None:
+def plot_mape_distribution(model_evaluation_data: dict, savefig: str = None) -> None:
     """
     Plot the distribution of per-sample MAPE across the test set.
 
@@ -173,6 +185,8 @@ def plot_mape_distribution(model_evaluation_data: dict) -> None:
         - 'mean_test_error_per_sample' : ndarray of shape (N_test,), MAPE per sample.
         - 'mean_percentage_error'      : float, mean MAPE across the test set.
         - 'p95_percentage_error'       : float, 95th percentile MAPE across the test set.
+    savefig : str, optional
+        If provided, saves the figure to this filename instead of displaying it. Default None.
 
     Returns
     -------
@@ -190,4 +204,6 @@ def plot_mape_distribution(model_evaluation_data: dict) -> None:
     plt.xlabel('Percentage Error (%)')
     plt.ylabel('Frequency')
     plt.legend()
+    if savefig:
+        plt.savefig(savefig, bbox_inches='tight')
     plt.show()

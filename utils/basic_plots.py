@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch 
 
-def plot_power_spectra(raw_data: dict, idx_min: int = 0, idx_max: int = 8000, interval: int = 100) -> None:
+def plot_power_spectra(raw_data: dict, idx_min: int = 0, idx_max: int = 8000, interval: int = 130, savefig: str = None) -> None:
     """
     Plot a subset of 21-cm power spectra on a log-log scale.
 
@@ -15,7 +15,9 @@ def plot_power_spectra(raw_data: dict, idx_min: int = 0, idx_max: int = 8000, in
     idx_max : int, optional
         Index of last simulation to plot (exclusive). Default 8000.
     interval : int, optional
-        Step size between plotted simulations e.g. interval=100 plots sims 0, 100, 200, ... Default 100.
+        Step size between plotted simulations e.g. interval=130 plots sims 0, 130, 260, ... Default 130.
+    savefig : str, optional
+        If provided, saves the figure to this filename instead of displaying it. Default None.
 
     Returns
     -------
@@ -24,16 +26,18 @@ def plot_power_spectra(raw_data: dict, idx_min: int = 0, idx_max: int = 8000, in
 
     Example
     -------
-    >>> plot_power_spectra(raw_data, idx_min=0, idx_max=500, interval=50)
+    >>> plot_power_spectra(raw_data, idx_min=0, idx_max=500, interval=130)
     """
     plt.figure(figsize=(8, 4), dpi=150)
     for i in range(idx_min, idx_max, interval):
-        plt.loglog(raw_data['k_train'][i], raw_data['power_train'][i], label=f'Sim {i+1}')
+        plt.loglog(raw_data['k_train'][i], raw_data['power_train'][i], label=f'Sim {i+1}', alpha=0.7)
     plt.xlabel(r'$k$ [Mpc$^{-1}$]')
     plt.ylabel(r'$\Delta^2(k)$ [mK$^2$]')
+    if savefig:
+        plt.savefig(savefig, bbox_inches='tight')
     plt.show()
 
-def evr_stats(processed: dict) -> None:
+def evr_stats(processed: dict, savefig: str = None) -> None:
     """
     Plot and print cumulative explained variance ratio for PCA components.
 
@@ -47,6 +51,8 @@ def evr_stats(processed: dict) -> None:
         Output of preprocess(), must contain:
         - 'evecs'                    : ndarray of shape (n_k, n_comp)
         - 'explained_variance_ratio' : ndarray of shape (n_comp,)
+    savefig : str, optional
+        If provided, saves the figure to this filename instead of displaying it. Default None.
 
     Returns
     -------
@@ -70,10 +76,12 @@ def evr_stats(processed: dict) -> None:
     plt.plot(np.arange(1, len(cumulative_explained_variance) + 1), cumulative_explained_variance, marker='o')
     plt.axhline(0.99, ls='--', c='k', label='99%')
     plt.axhline(0.999, ls=':', c='k', label='99.9%')
-    plt.xlabel("Modes included")
+    plt.xlabel("PCA components included")
     plt.ylabel("Cumulative explained variance")
     plt.legend()
     plt.tight_layout()
+    if savefig:
+        plt.savefig(savefig, bbox_inches='tight')
     plt.show()
 
     # State
@@ -87,6 +95,7 @@ def plot_reconstructed_train(
     n_comp: int,
     idx: int = 0,
     plot: bool = False,
+    savefig: str = None
 ) -> float:
     """
     Reconstruct a single training power spectrum from its PCA coefficients
@@ -109,6 +118,8 @@ def plot_reconstructed_train(
     plot : bool, optional
         If True, produces a three-panel figure showing component contributions,
         the reconstructed spectrum, and the fractional residual. Default False.
+    savefig : str, optional
+        If provided, saves the figure to this filename instead of displaying it. Default None.
 
     Returns
     -------
@@ -159,11 +170,13 @@ def plot_reconstructed_train(
         axes[2].set_title("Fractional residual")
 
         plt.tight_layout()
+        if savefig:
+            plt.savefig(savefig, bbox_inches='tight')
         plt.show()
 
     return float(frac_residual.mean())
 
-def pca_fractional_residual(processed: dict, n_comp: int = 10) -> list[float]:
+def pca_fractional_residual(processed: dict, n_comp: int = 10, savefig: str = None) -> list[float]:
     """
     Compute and plot the distribution of PCA reconstruction residuals over the training set.
 
@@ -179,6 +192,8 @@ def pca_fractional_residual(processed: dict, n_comp: int = 10) -> list[float]:
         plot_reconstructed_train().
     n_comp : int, optional
         Number of PCA components to use in each reconstruction. Default 10.
+    savefig : str, optional
+        If provided, saves the figure to this filename instead of displaying it. Default None.
 
     Returns
     -------
@@ -201,9 +216,11 @@ def pca_fractional_residual(processed: dict, n_comp: int = 10) -> list[float]:
     plt.hist(residuals, bins=75)
     plt.axvline(np.mean(residuals), label=f'Mean: {np.mean(residuals):.2f}%', ls='--', c='k')
     plt.axvline(np.percentile(residuals, 95), label=f'95th percentile: {np.percentile(residuals, 95):.2f}%', ls=':', c='k')
-    plt.xlabel('Percentage Error (%)')
+    plt.xlabel('MAPE (%)')
     plt.ylabel('Frequency')
     plt.legend()
+    if savefig:
+        plt.savefig(savefig, bbox_inches='tight')
     plt.show()
 
     return residuals
