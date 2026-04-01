@@ -1,6 +1,6 @@
 # Machine-Learning-Enhanced Inference of the 21-cm Power Spectrum at Cosmic Dawn
 
- Implements simulation-based inference (SBI) of the 21-cm power spectrum from Cosmic Dawn using two  approaches: an NN emulator with an explicit Gaussian likelihood, and a Neural Ratio Estimator (NRE).
+ Implements Bayesian of the 21-cm power spectrum from Cosmic Dawn using two approaches: an NN emulator with an explicit Gaussian likelihood LBI , and a Neural Ratio Estimator (NRE) SBI.
 
 ## Project Structure
 
