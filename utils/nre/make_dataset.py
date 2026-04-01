@@ -2,7 +2,36 @@ import numpy as np
 import matplotlib.pyplot as plt
 from utils.general import set_seed
 
-def make_nre_datasets(noisy_data: dict, processed: dict,plot: bool =False, savefig: bool = False) -> dict:
+def make_nre_datasets(noisy_data: dict, processed: dict, plot: bool = False, savefig: bool = False) -> dict:
+    """
+    Construct joint/disjoint NRE datasets for train, validation, and test splits.
+
+    For each split, pairs each noisy power spectrum with its true parameters
+    (joint, label=1) and with shuffled parameters from another simulation
+    (disjoint, label=0). The final dataset is shuffled before returning.
+
+    Parameters
+    ----------
+    noisy_data : dict
+        Output of noisify(). Required keys:
+        'pnoisy_train', 'pnoisy_val', 'pnoisy_test' : ndarray of shape (N, 54)
+        'theta5_train', 'theta5_val', 'theta5_test'  : ndarray of shape (N, 5)
+    processed : dict
+        Output of preprocess(). Required key:
+        - 'k_train' : ndarray of shape (n_k,), wavenumbers (used for plotting only).
+    plot : bool, optional
+        If True, plots joint vs disjoint scatter for each parameter on the
+        training set at k=0.1 Mpc^-1. Default False.
+    savefig : bool, optional
+        If True, saves each scatter plot to figs/shuffle_<param>.png. Default False.
+
+    Returns
+    -------
+    dict with keys 'nre_train', 'nre_val', 'nre_test', each containing:
+        - 'pnoisy' : ndarray of shape (2N, 54)
+        - 'theta5' : ndarray of shape (2N, 5)
+        - 'labels' : ndarray of shape (2N,), 1 for joint, 0 for disjoint
+    """
     pnoisy_train = noisy_data["pnoisy_train"]
     pnoisy_val = noisy_data["pnoisy_val"]
     pnoisy_test = noisy_data["pnoisy_test"]
@@ -52,7 +81,7 @@ def make_nre_datasets(noisy_data: dict, processed: dict,plot: bool =False, savef
                 ax.legend()
                 fig.tight_layout()
                 if savefig:
-                    fig.savefig(f"figs/shuffle_{savelabels[i]}.png", bbox_inches='tight')
+                    fig.savefig(f"outputs/figs/shuffle_{savelabels[i]}.png", bbox_inches='tight')
                 plt.show()
         # shuffle final 
         shuffled_idx = np.random.permutation(2*len(pnoisy))

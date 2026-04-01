@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find C:/Users/Joey/Desktop/Cambridge/Work/A1 -maxdepth 3 -name *.pdf -o -name *.docx -o -name README*)",
+      "Bash(pip freeze:*)",
+      "Bash(pip show:*)",
+      "Bash(python -c \"import emcee; print\\(''emcee'', emcee.__version__\\)\")",
+      "Bash(python -c \"import dynesty; print\\(''dynesty'', dynesty.__version__\\)\")",
+      "Bash(python -c \"import corner; print\\(''corner'', corner.__version__\\)\")",
+      "Bash(python -c \"import optuna; print\\(''optuna'', optuna.__version__\\)\")"
+    ]
+  }
+}

@@ -33,5 +33,18 @@ class NRE(nn.Module):
         # )
     
     def forward(self, x):
-        # x is shape (n_samps, 59)
+        """
+        Forward pass returning log r (unnormalised log-likelihood ratio).
+
+        Parameters
+        ----------
+        x : torch.Tensor of shape (n_samples, input_dim)
+            Concatenated [log(p_noisy), theta5] inputs, standardised.
+
+        Returns
+        -------
+        torch.Tensor of shape (n_samples, 1)
+            Raw logits (log r). No activation applied — sigmoid is fused
+            into BCEWithLogitsLoss during training.
+        """
         return self.layers(x)

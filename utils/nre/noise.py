@@ -1,31 +1,6 @@
 import numpy as np
 from utils.general import set_seed
 
-def noisify(pmodel, theta4, n_fnoise): # pmodel is just the mean
-    n_models = pmodel.shape[0] # shape (n_models ,54)
-
-    # draw fnoise
-    fnoise = 10**np.random.uniform(-3,0, size=(n_models, n_fnoise)) # size (n_models, n_fnoise)
-    
-    # reshape to targe (n_models, n_fnoise, 54)
-    pmodel_r = pmodel[:, np.newaxis, :] # (n_models, 1, 54)
-    fnoise_r = fnoise[:, :, np.newaxis] # (n_models, n_fnoise, 1)
-
-    # variances
-    var = 0.02 * (pmodel_r**2) * ((1-fnoise_r)**2) # (n_models, n_fnoise, 54)
-
-    # draw the gaussian
-    pnoisy =  np.random.normal(pmodel_r, np.sqrt(var)) #yields (n_models, n_fnoise, 54)
-
-    
-    theta_r = np.repeat(theta4, n_fnoise, axis=0)  # (n_models * n_fnoise, 4)
-    fnoise_flat = fnoise.reshape(-1, 1)              # (n_models * n_fnoise, 1)
-    pnoisy_flat = pnoisy.reshape(-1, 54)               # (n_models * n_fnoise, 54)
-
-    theta_noisy = np.concatenate([theta_r, fnoise_flat], axis=1) # (n_models * n_fnoise, 5)
-
-    return pnoisy_flat, theta_noisy
-
 def noisify(
     pmodel_train: np.ndarray,
     pmodel_val: np.ndarray,

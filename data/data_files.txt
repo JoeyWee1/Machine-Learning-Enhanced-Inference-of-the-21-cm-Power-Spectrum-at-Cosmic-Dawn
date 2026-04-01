@@ -1,0 +1,15 @@
+Data files are not tracked by git due to size. Place them as follows before running ML_inference.ipynb.
+
+data/
+├── simulations/
+│   └── sample_XXXXXX.npz   (~9997 files, one per simulation)
+│       Each file contains:
+│           - 'power'  : ndarray of shape (54,), 21-cm power spectrum [mK^2]
+│           - 'k'      : ndarray of shape (54,), wavenumber bins [Mpc^-1]
+│           - 'params' : dict with keys 'L40_xray', 'fesc10', 'epsstar', 'h_fid'
+│
+└── observations/
+    └── observations.npz    (single observed power spectrum)
+        Contains:
+            - 'power' : ndarray of shape (54,), observed 21-cm power spectrum [mK^2]
+            - 'k'     : ndarray of shape (54,), wavenumber bins [Mpc^-1]

@@ -1,0 +1,22 @@
+{
+  "study_name": "emulator_optuna",
+  "storage": "sqlite:////home/zyw26/Machine-Learning-Enhanced-Inference-of-the-21-cm-Power-Spectrum-at-Cosmic-Dawn/optuna_outputs/emulator_optuna.db",
+  "n_trials_total": 70,
+  "best_trial_value": 0.00034217126085422933,
+  "best_params": {
+    "num_layers": 6,
+    "hidden_dim": 256,
+    "lr": 8.958772826685883e-05
+  },
+  "best_epoch": 4282,
+  "best_valid_loss": 0.00025858700973913074,
+  "best_train_loss": 8.1879742538149e-05,
+  "test_loss_normalised_space": 0.00029047290445305407,
+  "mean_percentage_error": 72.15909629086084,
+  "p95_percentage_error": 391.60621129637235,
+  "seed": 1701,
+  "data_dir": "/home/zyw26/Machine-Learning-Enhanced-Inference-of-the-21-cm-Power-Spectrum-at-Cosmic-Dawn/simulations",
+  "train_size": 7997,
+  "val_size": 1000,
+  "test_size": 1000
+}

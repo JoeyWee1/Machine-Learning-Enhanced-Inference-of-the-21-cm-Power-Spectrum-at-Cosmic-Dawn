@@ -1,0 +1,41 @@
+Description of files in outputs/ after cleanup.
+Large binary files (model checkpoints, chains) are not tracked by git.
+
+outputs/
+├── figs/                                  Saved figures for the report
+│   ├── confusion.png                      NRE confusion matrix on test set
+│   ├── cumexpvar.png                      Cumulative explained variance ratio (PCA)
+│   ├── evr_stats.png                      EVR statistics plot
+│   ├── example_pca_recon.png              Single PCA reconstruction example (3-panel)
+│   ├── MAPE_PCA.png                       Distribution of PCA reconstruction MAPE
+│   ├── mcmc_emulator.png                  Emcee corner plot - emulator likelihood
+│   ├── mcmc_nre.png                       Emcee corner plot - NRE likelihood
+│   ├── nested_emulator_corner.png         Nested sampling corner - emulator likelihood
+│   ├── nested_nre.png                     Nested sampling corner - NRE likelihood
+│   ├── NN_recon_MAPE.png                  Distribution of emulator MAPE on test set
+│   ├── noisyvclean.png                    Noisy vs noiseless power spectra comparison
+│   ├── param_dists.png                    Parameter distributions before/after scaling
+│   ├── pmodel_examples.png                Example noiseless 21-cm power spectra
+│   ├── predicted_recons.png               Grid of true vs emulator-predicted spectra
+│   ├── shuffle_epsilon.png                Joint vs disjoint scatter - epsilon
+│   ├── shuffle_fesc10.png                 Joint vs disjoint scatter - fesc10
+│   ├── shuffle_fnoise.png                 Joint vs disjoint scatter - fnoise
+│   ├── shuffle_h.png                      Joint vs disjoint scatter - h
+│   └── shuffle_L40_xray.png              Joint vs disjoint scatter - L40_xray
+│
+├── optuna_outputs/
+│   └── local_run/                         Best emulator from Optuna (50-trial local run)
+│       ├── best_model_run50_reconstruction_log_1.65pct.pt    Emulator weights (1.65% MAPE)
+│       ├── preprocessing_run50_reconstruction_log_1.65pct.pkl  PCA + scaler artefacts
+│       ├── summary_run50_reconstruction_log_1.65pct.json     Best hyperparameters
+│       └── emulator_optuna.db             Optuna study database
+│
+└── samples/                               MCMC chains and NRE model artefacts
+    ├── emcee_emulator_thinned_samples.npy   Thinned emcee chain - emulator (physical space)
+    ├── emcee_emulator_unthinned_samples.npy Full emcee chain - emulator (physical space)
+    ├── emcee_emulator_diagnostics.json      Emcee diagnostics (tau, acceptance fraction)
+    ├── emcee_nre_thinned_samples.npy        Thinned emcee chain - NRE (physical space)
+    ├── emcee_nre_unthinned_samples.npy      Full emcee chain - NRE (physical space)
+    ├── emcee_nre_diagnostics.json           Emcee diagnostics - NRE run
+    ├── nre_checkpoint.pt                    Trained NRE model weights
+    └── nre_x_scaler.pkl                     StandardScaler fitted on NRE training inputs
