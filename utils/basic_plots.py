@@ -26,12 +26,11 @@ def plot_power_spectra(raw_data: dict, idx_min: int = 0, idx_max: int = 8000, in
     -------
     >>> plot_power_spectra(raw_data, idx_min=0, idx_max=500, interval=50)
     """
-    plt.figure(figsize=(5, 5), dpi = 150)
-    for i in  range(idx_min, idx_max, interval):
+    plt.figure(figsize=(8, 4), dpi=150)
+    for i in range(idx_min, idx_max, interval):
         plt.loglog(raw_data['k_train'][i], raw_data['power_train'][i], label=f'Sim {i+1}')
-    plt.xlabel('k-bin')
-    plt.ylabel('Power Spectrum')
-    plt.title('Examples of 21-cm Power Spectra')
+    plt.xlabel(r'$k$ [Mpc$^{-1}$]')
+    plt.ylabel(r'$\Delta^2(k)$ [mK$^2$]')
     plt.show()
 
 def evr_stats(processed: dict) -> None:
@@ -198,13 +197,12 @@ def pca_fractional_residual(processed: dict, n_comp: int = 10) -> list[float]:
         residuals.append(plot_reconstructed_train(processed, n_comp=n_comp, plot=False, idx=j))
 
     # Plot histogram
-    plt.figure(figsize=(6,6), dpi = 150)
-    plt.axvline(np.mean(residuals), color="red", linestyle="--", label=f"Mean: {np.mean(residuals):.2f}%")
-    plt.axvline(np.percentile(residuals, 95), color="orange", linestyle="--", label=f"p95:  {np.percentile(residuals, 95):.2f}%")
-    plt.hist(residuals, bins= 30)
-    plt.title("Distibution of the mean fractional residuals in training set from PCA reconstruction")
-    plt.xlabel("Mean fractional residual")
-    plt.ylabel("Count")
+    plt.figure(dpi=150)
+    plt.hist(residuals, bins=75)
+    plt.axvline(np.mean(residuals), label=f'Mean: {np.mean(residuals):.2f}%', ls='--', c='k')
+    plt.axvline(np.percentile(residuals, 95), label=f'95th percentile: {np.percentile(residuals, 95):.2f}%', ls=':', c='k')
+    plt.xlabel('Percentage Error (%)')
+    plt.ylabel('Frequency')
     plt.legend()
     plt.show()
 

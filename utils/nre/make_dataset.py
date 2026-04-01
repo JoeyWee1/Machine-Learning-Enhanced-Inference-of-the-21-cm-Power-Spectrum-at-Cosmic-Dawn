@@ -34,7 +34,13 @@ def make_nre_datasets(noisy_data: dict, processed: dict,plot: bool =False):
             pnoisy_slice = pnoisy_nre[:, idx_k] #(2*n_models,1)
             
             # each panel is power vs one of our params
-            labels = ["L40_xray", "fesc10", "epsilon", "h", "fnoise"]
+            labels = [
+                r"$L_{40}^{\text{X-ray}}$",
+                r"$f_{\text{esc}}^{10}$",
+                r"$\epsilon$",
+                r"$h$",
+                r"$f_{\text{noise}}$",
+            ]
             for i, label in enumerate(labels):
                 theta5_slice = theta5_nre[:,i]
                 ax[i].scatter(theta5_slice[:len(pnoisy)], pnoisy_slice[:len(pnoisy)], color = 'blue', label = "Joint Distribution", s=1, alpha=0.3)

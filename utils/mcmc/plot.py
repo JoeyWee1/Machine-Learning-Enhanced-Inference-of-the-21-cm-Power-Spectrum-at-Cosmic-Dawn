@@ -35,7 +35,13 @@ def plot_emcee_corner(unthinned_chain: np.ndarray, diagnostic: dict, df: int = 1
     discard = int(df * tau)   # Safe number to discard
     flat = unthinned_chain[discard:, :, :5].reshape(-1, 5)
     
-    labels  = ["L40_xray", "fesc10", "epsilon", "h", "fnoise"]
+    labels = [
+        r"$L_{40}^{\text{X-ray}}$",
+        r"$f_{\text{esc}}^{10}$",
+        r"$\epsilon$",
+        r"$h$",
+        r"$f_{\text{noise}}$",
+    ]
 
     plt.figure(figsize=(8, 8), dpi=150)
     corner.corner(
@@ -72,7 +78,13 @@ def plot_nested_corner(results) -> np.ndarray:
     -----
     Quantiles shown are 16th, 50th, and 84th percentiles (median ± 1σ).
     """
-    labels  = ["L40_xray", "fesc10", "epsilon", "h", "fnoise"]
+    labels = [
+        r"$L_{40}^{\text{X-ray}}$",
+        r"$f_{\text{esc}}^{10}$",
+        r"$\epsilon$",
+        r"$h$",
+        r"$f_{\text{noise}}$",
+    ]
     weights = np.exp(results.logwt - results.logz[-1])
     samples = resample_equal(results.samples, weights)   # (n_samples, 5)
 

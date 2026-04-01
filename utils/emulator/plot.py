@@ -33,7 +33,13 @@ def plot_pca_train_params(processed: dict, n_comp: int) -> dict:
     >>> domains['L40_xray']
     [0.1, 1000.0]
     """
-    param_names = ["L40_xray", "fesc10", "epsilon", "h"]
+    param_names  = ["L40_xray", "fesc10", "epsilon", "h"]
+    param_labels = [
+        r"$L_{40}^{\text{X-ray}}$",
+        r"$f_{\text{esc}}^{10}$",
+        r"$\epsilon$",
+        r"$h$",
+    ]
 
     unscaled_ranges = []
     scaled_ranges   = []
@@ -67,7 +73,7 @@ def plot_pca_train_params(processed: dict, n_comp: int) -> dict:
     fig, axes = plt.subplots(2, 4, figsize=(14, 8), dpi=150)
 
     for i in range(4):
-        name = param_names[i]
+        name = param_labels[i]
         ax_u = axes[0, i]  # top row: unscaled
         ax_s = axes[1, i]  # bottom row: scaled
 
@@ -94,7 +100,8 @@ def plot_pca_train_params(processed: dict, n_comp: int) -> dict:
 
     return unscaled_feature_domains
 
-def plot_emulator_test_reconstructions(model_evaluation_data: dict, processed: dict, square_side: int = 3) -> None:
+def plot_emulator_test_reconstructions(model_evaluation_data: dict, processed: dict, 
+                                       square_side: int = 3, seed: int = 1701) -> None:
     """
     Plot a grid of true vs emulator-predicted power spectra on the test set.
 
@@ -121,7 +128,8 @@ def plot_emulator_test_reconstructions(model_evaluation_data: dict, processed: d
     """
     N_test = processed["power_test"].shape[0]
     n_samples = square_side * square_side
-    sample_indices = np.random.choice(N_test, size=n_samples - 1, replace=False)
+    rng = np.random.default_rng(seed)
+    sample_indices = rng.choice(N_test, size=n_samples - 1, replace=False)
     sample_indices = np.concatenate([[0], sample_indices])
 
     fig, axes = plt.subplots(
@@ -143,12 +151,13 @@ def plot_emulator_test_reconstructions(model_evaluation_data: dict, processed: d
         ax.set_ylabel("Power Spectrum")
         ax.set_title(f"Sample {idx} — MAPE: {model_evaluation_data['mean_test_error_per_sample'][idx]:.2f}%",
                      fontsize=9, pad=4)
+        ax.legend(fontsize=6)
 
     # Single legend outside the grid
     handles, labels = axes[0, 0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="upper right", fontsize=9, framealpha=0.9)
     fig.suptitle("True vs Reconstructed Power Spectra", fontsize=13)
     plt.show()
+
 
 def plot_mape_distribution(model_evaluation_data: dict) -> None:
     """
@@ -178,7 +187,6 @@ def plot_mape_distribution(model_evaluation_data: dict) -> None:
     plt.hist(mape, bins=75)
     plt.axvline(np.mean(mape), label=f'Mean: {mean:.2f}%', ls='--', c='k')
     plt.axvline(np.quantile(mape, 0.95), label=f'95th percentile: {p95:.2f}%', ls=':', c='k')
-    plt.title("Distribution of Per-Sample MAPE on Test Set")
     plt.xlabel('Percentage Error (%)')
     plt.ylabel('Frequency')
     plt.legend()
