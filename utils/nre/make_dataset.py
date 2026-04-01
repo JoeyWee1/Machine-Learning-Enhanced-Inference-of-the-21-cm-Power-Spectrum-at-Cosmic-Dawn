@@ -14,6 +14,7 @@ def make_nre_datasets(noisy_data: dict, processed: dict,plot: bool =False):
     k_train = processed["k_train"]  
 
     def _make_nre_dataset(pnoisy, theta5, plot=plot):
+        set_seed()
         pnoisy_j = pnoisy #(n_models, 54)
         theta5_j = theta5 #(n_models, 5)
 

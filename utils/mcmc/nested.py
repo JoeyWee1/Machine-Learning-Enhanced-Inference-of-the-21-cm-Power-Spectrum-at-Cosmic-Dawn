@@ -128,7 +128,6 @@ def build_sampler(
         nlive=nlive,
         bound="multi",
         sample="rwalk",
-        seed=1701,
     )
     sampler.run_nested(print_progress=print_progress)
     return sampler.results
